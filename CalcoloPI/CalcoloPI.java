@@ -1,13 +1,12 @@
 public class CalcoloPI implements Runnable
 {
-    private double accuracy = 0;
+    private Double accuracy = 0d;
     private long maxWaitingTime;
     private double piStimato = 0.0;
     private int n = 0;
-    private Thread th; 
+    private Thread th;
 
-
-    public CalcoloPI(Double accuracy, Thread th)
+    private CalcoloPI(Double accuracy, Thread th)
     {
         this.accuracy = accuracy;
         this.th = th;
@@ -38,11 +37,11 @@ public class CalcoloPI implements Runnable
     {
         if(args.length != 2)
         {
-            System.err.printf("You must put the following 2 arguments:" + 
+            System.err.print("You must put the following 2 arguments:" +
                               " accuracy and maximum waiting time (seconds)");
             return;
         }
-        double accuracy = Double.parseDouble(args[0]);
+        Double accuracy = Double.parseDouble(args[0]);
         long maxWaitingTime = Long.parseLong(args[1]);
         Thread mainThread = Thread.currentThread();
 
@@ -52,10 +51,9 @@ public class CalcoloPI implements Runnable
         thPI.start();
         try
         {
-            //join(milliseconds)
             thPI.join(maxWaitingTime * 1000);
             //Se il thread thPI non ha ancora finito, interrompilo manualmente
-            if(thPI.isAlive() == true)
+            if(thPI.isAlive())
                 thPI.interrupt();
         }
         catch(InterruptedException exception)
