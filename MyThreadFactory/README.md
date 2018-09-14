@@ -1,1 +1,1 @@
-[I'm an inline-style link](https://www.google.com)
+[Inspired by Java-9-Concurrency-Cookbook-Second-Editio](https://github.com/PacktPublishing/Java-9-Concurrency-Cookbook-Second-Edition)
