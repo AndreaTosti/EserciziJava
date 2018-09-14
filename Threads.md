@@ -4,7 +4,7 @@ Runnable, creare un'istanza di X, infine creare un thread passandogli
 l'istanza del task creato, oppure
 2. estendere la classe java.lang.Thread
 
-## *Iniziamo a vedere il metodo 1.*
+### *Iniziamo a vedere il metodo 1.*
 
 * Una classe che implementa l'interfaccia deve fornire l'implementazione del
 metodo run()
@@ -114,7 +114,7 @@ oggetti di tipo **ExecutorService**
     * i tasks devono essere incapsulati in oggetti di tipo Runnable e passati
     a questi esecutori mediante il metodo **execute()**
 
-Metodo **newCachedThreadPool**
+Metodo **newCachedThreadPool()**
 * crea un pool dove
     * non ci sono limiti sulla dimensione del pool, se tutti i thread sono
     occupati nell'esecuzione di altri task da eseguire, viene creato un nuovo
@@ -136,7 +136,7 @@ Metodo **newFixedThreadPool(int N)**
         * la coda è illimitata
         * se almeno un thread è inattivo, viene utilizzato quel thread
 
-## *Vediamo ora il metodo 2.*
+### *Vediamo ora il metodo 2.*
 
 * fare uso di subclassing, overriding..
 * creare una classe X che estenda la classe Thread e fare l'override del
@@ -146,7 +146,21 @@ comportamento è quello definito nel metodo run (su cui è stato fatto
 l'override
 * invocare il metodo **start()** sull'oggetto istanziato
 
+## Blocking Queue per l'interazione tra threads
 
+È una coda Thread-Safe per quanto riguarda gli inserimenti e le rimozioni
+* classico schema Produttore-Consumatore
+* si hanno i metodi per inserire, rimuovere o esaminare gli elementi della coda
+* è un'**interfaccia**, alcune implementazioni disponibili sono:
+    * **ArrayBlockingQueue** coda di dimensione *limitata*, elementi memorizzati
+    in un array. L'upper bound è definito a tempo di *inizializzazione*
+    * **DelayQueue**
+    * **LinkedBlockingQueue** struttura linkata, *può* avere un upper bound,
+    oppure, se non si specifica un upper bound, l'upper bound è
+    *Integer.MAX_VALUE*
+    * **PriorityBlockingQueue**
+    * **SynchronousQueue** *non ha una capacità interna*, l'operazione di
+    inserzione *deve attendere* una corrispondente rimozione e viceversa
 
 
 
