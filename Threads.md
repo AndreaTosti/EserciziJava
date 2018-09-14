@@ -39,7 +39,13 @@ implementare il metodo run.
 come parametro
 4. attivare il thread con una start()
 
+Il metodo **start()**
 
+* segnala allo schedulatore (tramite la JVM) che il thread può essere attivato
+e di conseguenza viene inizializzato l'ambiente del thread
+
+* restituisce immediatamente il controllo al chiamante, senza attendere che il
+thread attivato inizi la sua esecuzione
 
 ### Thread demoni
 
