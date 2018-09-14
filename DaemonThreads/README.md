@@ -6,3 +6,4 @@ background  fino  a  che  il  programma  è  in  esecuzione.
 (anche se ci sono thread demoni in esecuzione).
 * Se  ci  sono  thread  non-demoni  ancora  in  esecuzione,  il  programma  non
 termina.
+* un esempio di thread non-demone è il main().
