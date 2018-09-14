@@ -6,8 +6,7 @@ background  fino  a  che  il  programma  è  in  esecuzione.
 (anche se ci sono thread demoni in esecuzione).
 * Se  ci  sono  thread  non-demoni  ancora  in  esecuzione,  il  programma  non
 termina.
-* un esempio di thread non-demone è il main().
-* altro esempio è il Java Garbage Collector
+* esempi di thread non-demone sono il main() e il Java Garbage Collector
 
 ## Codice di esempio
 
