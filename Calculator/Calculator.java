@@ -2,6 +2,5 @@ package Calculator;
 
 public class Calculator
 {
-    //Test
-    //Fabio
+    //Test 2
 }
