@@ -2,11 +2,11 @@ package NonBlockingThreadSafeDeque;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
 
-public class AddTask implements Runnable
+public class PollTask implements Runnable
 {
     private final ConcurrentLinkedDeque<String> list;
 
-    AddTask(ConcurrentLinkedDeque<String> list)
+    PollTask(ConcurrentLinkedDeque<String> list)
     {
         this.list = list;
     }
@@ -14,10 +14,10 @@ public class AddTask implements Runnable
     @Override
     public void run()
     {
-        String name = Thread.currentThread().getName();
-        for(int i = 0; i < 10000; i++)
+        for(int i = 0; i < 5000; i++)
         {
-            list.add(name + ": Element " + i);
+            list.pollFirst();
+            list.pollLast();
         }
     }
 }
