@@ -1,5 +1,6 @@
 package NonBlockingThreadSafeDeque;
 
+import java.security.SecureRandom;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class PollTask implements Runnable
@@ -14,10 +15,14 @@ public class PollTask implements Runnable
     @Override
     public void run()
     {
-        for(int i = 0; i < 5000; i++)
+        int k= 0;
+        SecureRandom randomNumbers = new SecureRandom();
+        int randomValue = randomNumbers.nextInt(5000);
+        for(int i = 0; i < randomValue; i++)
         {
-            list.pollFirst();
-            list.pollLast();
+            k += (list.pollFirst() == null ? 0 : 1) ;
+            k += (list.pollLast() == null ? 0 : 1);
         }
+        System.out.printf("Polled %d items \n", k);
     }
 }

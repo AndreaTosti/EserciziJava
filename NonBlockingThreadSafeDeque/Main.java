@@ -48,6 +48,6 @@ public class Main
             }
         }
 
-        System.out.printf("Main: Size of the List: %d\n", list.size());
+        System.out.printf("\nMain: Size of the List: %d\n", list.size());
     }
 }
