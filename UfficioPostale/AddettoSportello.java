@@ -1,19 +1,16 @@
 package UfficioPostale;
 
-import java.security.SecureRandom;
-import java.util.concurrent.TimeUnit;
-
-import static java.lang.Thread.sleep;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class AddettoSportello implements Runnable
 {
-    /*
-     * @param[in] numSportello
-     */
     private final int numSportello;
-    AddettoSportello(int numSportello)
+    private final LinkedBlockingQueue<Task> codaSportelli;
+
+    AddettoSportello(int numSportello, LinkedBlockingQueue<Task> codaSportelli)
     {
         this.numSportello = numSportello;
+        this.codaSportelli = codaSportelli;
     }
 
     @Override
@@ -21,20 +18,21 @@ public class AddettoSportello implements Runnable
     {
         System.out.printf("L'addetto allo sportello %d e' al lavoro\n",
                             numSportello);
-        SecureRandom randomNumbers = new SecureRandom();
-        int randomValue = randomNumbers.nextInt(2000);
-        try
+        while(true)
         {
-            TimeUnit.MILLISECONDS.sleep(randomValue);
-        }
-        catch(InterruptedException e)
-        {
-            e.printStackTrace();
+            Task task = codaSportelli.poll();
+
+            if(task == null)
+                break;
+
+            task.run();
+
+            System.out.printf("L'addetto allo sportello %d ha servito il " +
+                              "task id %d\n", numSportello, task.getId());
         }
 
-        System.out.printf("L'addetto allo sportello %d ha finito il lavoro" +
-                          " durato %.3f secondi \n", numSportello,
-                            randomValue/1000.f);
+        System.out.printf("L'addetto allo sportello %d ha finito il lavoro\n",
+                            numSportello);
     }
 
 }
