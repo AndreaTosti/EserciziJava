@@ -1,6 +1,8 @@
+package CalcoloPI;
+
 public class CalcoloPI implements Runnable
 {
-    private Double accuracy = 0d;
+    private Double accuracy;
     private long maxWaitingTime;
     private double piStimato = 0.0;
     private int n = 0;

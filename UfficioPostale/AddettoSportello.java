@@ -1,6 +1,7 @@
 package UfficioPostale;
 
 import java.security.SecureRandom;
+import java.util.concurrent.TimeUnit;
 
 import static java.lang.Thread.sleep;
 
@@ -15,6 +16,7 @@ public class AddettoSportello implements Runnable
         this.numSportello = numSportello;
     }
 
+    @Override
     public void run()
     {
         System.out.printf("L'addetto allo sportello %d e' al lavoro\n",
@@ -23,7 +25,7 @@ public class AddettoSportello implements Runnable
         int randomValue = randomNumbers.nextInt(2000);
         try
         {
-            sleep(randomValue);
+            TimeUnit.MILLISECONDS.sleep(randomValue);
         }
         catch(InterruptedException e)
         {
