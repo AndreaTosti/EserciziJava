@@ -11,7 +11,7 @@ public class Task implements Runnable
 {
     private final int id;
 
-    public Task(int id)
+    Task(int id)
     {
         this.id = id;
     }
@@ -29,6 +29,8 @@ public class Task implements Runnable
         {
             e.printStackTrace();
         }
+        System.out.printf("[Task %d] è stato servito dall'addetto %s\n",
+                           this.id, Thread.currentThread().getName());
     }
 
     int getId()
