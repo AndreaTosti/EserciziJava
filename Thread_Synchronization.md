@@ -43,4 +43,27 @@ del thread su cui è invocata la join()
 * può lanciare un'eccezione *InterruptedException* se il thread riceve
 un'interruzione mentre è sospeso sulla join
 ### Condivisione di risorse
+* Scenario tipico di un programma concorrente: un insieme di threads
+condividono una risorsa
+    * più threads accedono concorrentemente allo stesso file, alla
+    stessa parte di un database o di una struttura di memoria
+* **race conditions** - l'accesso non controllato a risorse condivise
+può provocare errori e inconsistenze
+* **sezione critica** - blocco di codice in cui si effettua l'accesso
+ad una risorsa condivisa e che deve essere eseguito da un thread per
+volta
+* meccanismi di sincronizzazione per implementare le sezioni critiche
+    * interfaccia **Lock** e le sue diverse implementazioni
+    * concetto di **monitor**
+Esempio di oggetto condiviso come risorsa condivisa
+```java
+Account account = new Account();
+Company company = new Company(account);
+Bancomat bank = new Bancomat(account);
+```
+Notare come i costruttori di Company e Bancomat prendano in input
+l'oggetto account. Se viene manipolato, nello stesso momento, l'oggetto
+account(tramite metodi che modificano i suoi campi), può venirsi a
+creare una Race Condition.
+
 
