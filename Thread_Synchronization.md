@@ -62,8 +62,89 @@ Company company = new Company(account);
 Bancomat bank = new Bancomat(account);
 ```
 Notare come i costruttori di Company e Bancomat prendano in input
-l'oggetto account. Se viene manipolato, nello stesso momento, l'oggetto
-account(tramite metodi che modificano i suoi campi), può venirsi a
-creare una Race Condition.
+l'oggetto account. Se viene manipolato, nello stesso momento, sia dal
+thread che gestisce company che dal thread che gestisce bank,
+l'oggetto account(tramite metodi che modificano i suoi campi),
+può manifestarsi una Race Condition.
 
+Per risolvere bisogna sincronizzare i thread, esistono alcuni
+meccanismi:
+* meccanismi a basso livello
+    * lock()
+    * variabili di condizione associate a lock()
+* meccanismi ad alto livello
+    * synchronized()
+    * wait(), notify(), notifyAll()
+    * monitors
 
+### Lock
+
+Una lock è un oggetto che può trovarsi in due stati diversi: lock e
+unlocked.
+* lo stato viene impostato con i metodi lock() e unlock()
+* un solo thread alla volta può ottenere la lock()
+* gli altri thread che tentano di ottenere la lock si bloccano
+
+Quando un thread tenta di acquisire una lock
+* rimane bloccato fintanto che la lock è detenuta da un altro thread
+* rilascio della lock: uno dei thread in attesa la acquisisce
+
+Interfaccia: *java.util.concurrent.locks.Lock*
+
+Implementazione: *java.util.concurrent.locks.ReentrantLock*
+
+Esempio:
+```java
+private final Lock accountLock = new ReentrantLock();
+accountLock.lock();
+//esegui operazioni ...
+accountLock.unlock();
+```
+Esempio di **deadlock** (i thread A e B rimangono bloccati all'infinito)
+```
+Thread(A) acquisisce Lock(X)
+Thread(B) acquisisce Lock(Y)
+A tenta di acquisire Lock(Y)
+B tenta di acquisire Lock(X)
+```
+### Read-Write Locks
+Interfaccia: *ReadWriteLock*
+
+Implementazione: *ReentrantReadWriteLock*
+* mantiene una coppia di lock associate, una per le operazioni di sola
+lettura e una per le scritture
+    * la *read lock* può essere acquisita da più thread lettori, purchè
+    non vi siano scrittori
+    * la *write lock* è esclusiva
+
+### Cooperazione threads - variabili di condizione
+* l'interazione esplicita tra threads avviene tramite l'utilizzo di
+oggetti condivisi
+* esempio: *Produttore-Consumatore* dove il produttore P produce un
+nuovo valore e lo comunica ad un thread consumatore C
+* il valore prodotto viene incapsulato in un oggetto condiviso da P e
+da C, ad esempio una *coda*
+* la mutua esclusione sull'oggetto condiviso è garantita dall'uso di
+metodi synchronized, **ma non è sufficiente garantire sincronizzazioni
+esplicite**
+* è necessario introdurre costrutti per sospendere un thread T quando
+una condizione C non è verificata e per riattivare T quando diventa
+vera
+    * il produttore si sospende se il buffer è pieno, si riattiva
+    quando c'è una posizione libera
+* ad una lock possono essere associate un insieme di *variabili di
+condizione*
+* lo scopo di tali variabili è di permettere ai thread di controllare
+se una condizione sullo stato della risorsa è verificata o meno e
+    * se la condizione è falsa, di sospendersi rilasciando la lock() ed
+    inserire il thread in una coda di attesa di quella condizione
+    * risvegliare un thread in attesa quando la condizione risulta
+    verificata
+* per ogni oggetto diverse code:
+    * una per i threads in attesa di acquisire la lock()
+    * una associata ad ogni variabile di condizione
+* sospensione su variabili di condizione associate ad un oggetto solo
+dopo aver acquisito la lock() su quell'oggetto, altrimenti viene
+sollevata una *IllegalMonitorException*
+* l'interfaccia *Condition* fornisce i meccanismi per sospendere un
+thread e per risvegliarlo
