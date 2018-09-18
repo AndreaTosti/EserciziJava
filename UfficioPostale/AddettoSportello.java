@@ -26,11 +26,12 @@ public class AddettoSportello implements Runnable
                 break;
 
             task.run();
-            //System.out.printf("L'addetto allo sportello %d ha servito il " +
-            //                  "task id %d\n", numSportello, task.getId());
+
+            System.out.printf("L'addetto allo sportello %d ha servito il " +
+                              "task id %d\n", numSportello, task.getId());
         }
 
-        System.out.printf("L'addetto allo sportello %d ha finito il lavoro\n",
+        System.out.printf("L'addetto allo sportello %d ha finito il lavoro!\n",
                             numSportello);
     }
 

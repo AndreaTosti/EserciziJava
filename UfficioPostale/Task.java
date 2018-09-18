@@ -30,7 +30,7 @@ public class Task implements Runnable
             e.printStackTrace();
         }
         System.out.printf("[Task %d] è stato servito dall'addetto %s\n",
-                           this.id, Thread.currentThread().getName());
+                this.id, Thread.currentThread().getName());
     }
 
     int getId()
