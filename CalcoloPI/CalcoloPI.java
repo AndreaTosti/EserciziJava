@@ -23,8 +23,6 @@ public class CalcoloPI implements Runnable
     @Override
     public void run()
     {
-        //Differenza tra il valore stimato di PI.GRECO (piStimato) e il valore
-        //di Math.PI
         while(Math.abs(piStimato * 4 - Math.PI) >= accuracy)
         {
             piStimato = piStimato + (Math.pow(-1, n)) / (2 * n + 1);
