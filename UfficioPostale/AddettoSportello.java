@@ -25,7 +25,7 @@ public class AddettoSportello implements Runnable
             if(task == null)
                 break;
 
-            task.run();
+            //task.run();
 
             System.out.printf("L'addetto allo sportello %d ha servito il " +
                               "task id %d\n", numSportello, task.getId());

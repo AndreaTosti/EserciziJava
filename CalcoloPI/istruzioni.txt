@@ -1,0 +1,9 @@
+* Nome: Andrea
+* Cognome: Tosti
+* Matricola: 518111
+
+Esempio di utilizzo
+accuratezza 0.0001
+tempo massimo di attesa di 5 secondi
+
+eseguire java CalcoloPI 0.0001 5

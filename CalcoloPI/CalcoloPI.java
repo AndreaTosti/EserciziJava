@@ -1,9 +1,15 @@
-package CalcoloPI;
+/*
+ * Nome: Andrea
+ * Cognome: Tosti
+ * Matricola: 518111
+ */
+
+//package CalcoloPI;
 
 public class CalcoloPI implements Runnable
 {
-    private Double accuracy;
-    private long maxWaitingTime;
+    private Double accuracy;        //grado di accuratezza
+    private long maxWaitingTime;    //tempo massimo di attesa
     private double piStimato = 0.0;
     private int n = 0;
     private Thread th;
