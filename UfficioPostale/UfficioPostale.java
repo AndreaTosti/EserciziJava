@@ -22,26 +22,26 @@ public class UfficioPostale
         LinkedBlockingQueue<Task> codaSalaAttesa =
                 new LinkedBlockingQueue<>();
 
-        LinkedBlockingQueue<Task> codaSportelli =
-                new LinkedBlockingQueue<>(capacitaCodaSportelli);
+        RejectedExecutionHandler rejectedExecutionHandler = new ThreadPoolExecutor.CallerRunsPolicy();
+        ExecutorService exec = new ThreadPoolExecutor(
+                numSportelli,
+                numSportelli,
+                0,
+                TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(capacitaCodaSportelli),
+                rejectedExecutionHandler);
 
         ServerSalaAttesa serverSalaAttesa =
-                new ServerSalaAttesa(codaSalaAttesa, codaSportelli);
+                new ServerSalaAttesa(codaSalaAttesa, exec);
+
         Thread threadServerSalaAttesa = new Thread(serverSalaAttesa);
-
-        ServerSalaSportelli serverSalaSportelli =
-                new ServerSalaSportelli(numSportelli, codaSportelli);
-        Thread threadServerSalaSportelli = new Thread(serverSalaSportelli);
-
         threadServerSalaAttesa.start();
-        threadServerSalaSportelli.start();
 
         for(int i = 1; i <= numTasks; i++)
         {
             Task task = new Task(i);
             try
             {
-                //Thread.sleep(50);
                 codaSalaAttesa.put(task);
             }
             catch(InterruptedException e)
@@ -51,7 +51,5 @@ public class UfficioPostale
         }
         threadServerSalaAttesa.interrupt();
         threadServerSalaAttesa.join();
-        threadServerSalaSportelli.interrupt();
-        threadServerSalaSportelli.join();
     }
 }

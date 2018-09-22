@@ -8,18 +8,20 @@
 
 package UfficioPostale;
 
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class ServerSalaAttesa implements Runnable
 {
     private LinkedBlockingQueue<Task> codaSalaAttesa;
-    private LinkedBlockingQueue<Task> codaSportelli;
+    private ExecutorService exec;
 
     ServerSalaAttesa(LinkedBlockingQueue<Task> codaSalaAttesa,
-                     LinkedBlockingQueue<Task> codaSportelli)
+                     ExecutorService exec)
     {
         this.codaSalaAttesa = codaSalaAttesa;
-        this.codaSportelli = codaSportelli;
+        this.exec = exec;
     }
 
     @Override
@@ -32,7 +34,7 @@ public class ServerSalaAttesa implements Runnable
                 Task task = codaSalaAttesa.take();
                 System.out.printf("[ServerSalaAttesa] Nuovo cliente con id = " +
                         "%d\n", task.getId());
-                codaSportelli.put(task);
+                exec.execute(task);
             }
             catch(InterruptedException e)
             {
@@ -42,14 +44,7 @@ public class ServerSalaAttesa implements Runnable
                 {
                     System.out.printf("[ServerSalaAttesa] nuovo cliente con " +
                                       "id = %d\n", task.getId());
-                    try
-                    {
-                        codaSportelli.put(task);
-                    }
-                    catch(InterruptedException ex)
-                    {
-                        ex.printStackTrace();
-                    }
+                    exec.execute(task);
                 }
                 return;
             }
