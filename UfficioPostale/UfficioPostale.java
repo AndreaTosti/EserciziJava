@@ -22,15 +22,35 @@ public class UfficioPostale
         LinkedBlockingQueue<Task> codaSalaAttesa =
                 new LinkedBlockingQueue<>();
 
-        RejectedExecutionHandler rejectedExecutionHandler = new ThreadPoolExecutor.CallerRunsPolicy();
+        //la seguente istruzione non va bene, perche' altrimenti il task verrebbe
+        //eseguito dal thread chiamante e non da un thread del pool
+        //RejectedExecutionHandler rejectedExecutionHandler =
+        // new ThreadPoolExecutor.CallerRunsPolicy();
+        
         ExecutorService exec = new ThreadPoolExecutor(
                 numSportelli,
                 numSportelli,
                 0,
                 TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>(capacitaCodaSportelli),
-                rejectedExecutionHandler);
+                new LinkedBlockingQueue<>(capacitaCodaSportelli));
 
+        ((ThreadPoolExecutor) exec).setRejectedExecutionHandler(
+            new RejectedExecutionHandler()
+            {
+                public void rejectedExecution(Runnable r,
+                                              ThreadPoolExecutor executor)
+                {
+                    // this will block if the queue is full
+                    try
+                    {
+                        executor.getQueue().put(r);
+                    }catch(InterruptedException e)
+                    {
+                        e.printStackTrace();
+                    }
+                }
+            });
+                                         
         ServerSalaAttesa serverSalaAttesa =
                 new ServerSalaAttesa(codaSalaAttesa, exec);
 
