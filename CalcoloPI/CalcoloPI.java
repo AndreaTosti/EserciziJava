@@ -4,7 +4,7 @@
  * Matricola: 518111
  */
 
-//package CalcoloPI;
+package CalcoloPI;
 
 public class CalcoloPI implements Runnable
 {

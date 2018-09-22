@@ -2,7 +2,7 @@
 * Cognome: Tosti
 * Matricola: 518111
 
-Esempio di utilizzo
+Esempio di utilizzo con
 accuratezza 0.0001
 tempo massimo di attesa di 5 secondi
 

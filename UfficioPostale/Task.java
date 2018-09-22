@@ -1,3 +1,11 @@
+/*
+ * Nome: Andrea
+ * Cognome: Tosti
+ * Matricola: 518111
+ */
+
+//TOGLIERE PACKAGE
+
 package UfficioPostale;
 
 /*
@@ -19,6 +27,9 @@ public class Task implements Runnable
     @Override
     public void run()
     {
+        System.out.printf("[Task %d] è davanti all'operatore %s\n",
+                          this.id, Thread.currentThread().getName());
+
         SecureRandom randomNumbers = new SecureRandom();
         int randomValue = randomNumbers.nextInt(1000);
         try
@@ -37,7 +48,4 @@ public class Task implements Runnable
     {
         return id;
     }
-    //commento 1
-
-    //
 }
