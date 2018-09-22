@@ -10,7 +10,6 @@ package UfficioPostale;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 
 public class ServerSalaAttesa implements Runnable
 {
@@ -32,20 +31,22 @@ public class ServerSalaAttesa implements Runnable
             try
             {
                 Task task = codaSalaAttesa.take();
-                System.out.printf("[ServerSalaAttesa] Nuovo cliente con id = " +
-                        "%d\n", task.getId());
+                System.out.printf("[ServerSalaAttesa] Cliente con id = " +
+                        "%d e' entrato in sala d'attesa\n", task.getId());
                 exec.execute(task);
             }
             catch(InterruptedException e)
             {
-                System.out.println("ThreadSalaAttesa deve smettere di lavorare");
+                System.out.println("[ServerSalaAttesa] Comunicazione " +
+                                   "chiusura dal thread main");
                 Task task;
                 while((task = codaSalaAttesa.poll()) != null)
                 {
-                    System.out.printf("[ServerSalaAttesa] nuovo cliente con " +
-                                      "id = %d\n", task.getId());
+                    System.out.printf("[ServerSalaAttesa] Cliente con " +
+                        "id = %d e' entrato in sala d'attesa\n", task.getId());
                     exec.execute(task);
                 }
+                exec.shutdown();
                 return;
             }
         }

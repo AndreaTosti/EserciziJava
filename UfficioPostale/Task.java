@@ -8,30 +8,28 @@
 
 package UfficioPostale;
 
-/*
- * @brief Una persona è un Task
- */
-
 import java.security.SecureRandom;
 import java.util.concurrent.TimeUnit;
 
 public class Task implements Runnable
 {
     private final int id;
+    private final int secondiMassimiTask;
 
-    Task(int id)
+    Task(int id, int secondiMassimiTask)
     {
         this.id = id;
+        this.secondiMassimiTask = secondiMassimiTask;
     }
 
     @Override
     public void run()
     {
-        System.out.printf("[Task %d] è davanti all'operatore %s\n",
+        System.out.printf("[Task %d] inizio conversazione con operatore %s\n",
                           this.id, Thread.currentThread().getName());
 
         SecureRandom randomNumbers = new SecureRandom();
-        int randomValue = randomNumbers.nextInt(1000);
+        int randomValue = randomNumbers.nextInt(secondiMassimiTask * 1000);
         try
         {
             TimeUnit.MILLISECONDS.sleep(randomValue);
@@ -40,7 +38,7 @@ public class Task implements Runnable
         {
             e.printStackTrace();
         }
-        System.out.printf("[Task %d] è stato servito dall'addetto %s\n",
+        System.out.printf("[Task %d] fine conversazione con operatore %s\n",
                 this.id, Thread.currentThread().getName());
     }
 

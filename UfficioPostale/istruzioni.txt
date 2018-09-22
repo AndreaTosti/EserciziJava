@@ -1,0 +1,24 @@
+* Nome: Andrea
+* Cognome: Tosti
+* Matricola: 518111
+
+Il file UfficioPostale.java contiene il metodo main e i seguenti campi
+* numSportelli : numero esatto dei thread del ThreadPool
+* capacitaCodaSportelli : numero massimo di task che possono stare nella seconda
+                          sala, che equivale ad avere al massimo k persone nella
+                          seconda sala
+* numTasks : numero di task da far entrare nella prima sala (inserire un numero
+             elevato per simulare un flusso continuo)
+* secondiMassimiTask : ogni task viene servito dall'addetto allo sportello per un
+                       numero di secondi random che va da 0 a secondiMassimiTask
+
+Inoltre troviamo le strutture
+* codaSalaAttesa : coda illimitata, dove il thread main provvede a inserire i
+                   task e il thread threadSalaAttesa provvede a prelevare i task
+                   e ad affidarli al ThreadPool exec
+La seconda coda (davanti agli sportelli) è gestita implicitamente dal
+ThreadPool : il ThreadPool exec stesso ha al suo interno una coda di capacita'
+pari a capacitaCodaSportelli.
+Una volta inseriti tutti i task nella coda codaSalaAttesa, il thread
+threadSalaAttesa viene informato tramite interruzione di dover terminare tutti
+i task che ha in coda prima di poter terminare la sua esecuzione.
