@@ -1,3 +1,5 @@
+package GestioneLaboratorio;
+
 public class Studente extends Utente
 {
     private int computerId;

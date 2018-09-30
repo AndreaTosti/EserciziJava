@@ -1,3 +1,5 @@
+package GestioneLaboratorio;
+
 public class Tesista extends Utente
 {
     /* indice computer in cui è installato il software utile al tesista */

@@ -1,3 +1,5 @@
+package GestioneLaboratorio;
+
 public class Professore extends Utente
 {
     public Professore(Tutor tutor, int id)

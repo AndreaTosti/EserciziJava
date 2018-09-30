@@ -1,4 +1,6 @@
-class Computer
+package GestioneLaboratorio;
+
+public class Computer
 {
     private boolean occupied;
 
