@@ -11,7 +11,7 @@ public class Studente extends Utente
 
     public void usaComputer() throws InterruptedException
     {
-        computerId = tutor.usaComputerDaStudente();
+        computerId = tutor.usaComputerDaStudente(this);
     }
 
     public void lasciaComputer()

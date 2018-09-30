@@ -9,7 +9,7 @@ public class Professore extends Utente
 
     public void usaComputer() throws InterruptedException
     {
-        tutor.usaComputerDaProfessore();
+        tutor.usaComputerDaProfessore(this);
     }
 
     public void lasciaComputer()

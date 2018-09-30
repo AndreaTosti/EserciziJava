@@ -13,7 +13,7 @@ public class Tesista extends Utente
 
     public void usaComputer() throws  InterruptedException
     {
-        tutor.usaComputerDaTesista(computerId);
+        tutor.usaComputerDaTesista(computerId, this);
     }
 
     public void lasciaComputer()
