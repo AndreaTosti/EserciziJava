@@ -1,14 +1,22 @@
 package GestioneLaboratorio;
 
+/*
+ * Nome: Andrea
+ * Cognome: Tosti
+ * Matricola: 518111
+ */
+
 public class Professore extends Utente
 {
-    public Professore(Tutor tutor, int id)
+    Professore(Tutor tutor, int id)
     {
         super(tutor, id);
     }
 
     public void usaComputer() throws InterruptedException
     {
+        /* Passo come parametro anche un riferimento all'oggetto di
+           Professore */
         tutor.usaComputerDaProfessore(this);
     }
 
@@ -20,7 +28,6 @@ public class Professore extends Utente
     @Override
     public String toString()
     {
-        return String.format("Professore%d",
-                getId());
+        return String.format("Professore%d", getId());
     }
 }

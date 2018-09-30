@@ -1,6 +1,12 @@
 package GestioneLaboratorio;
 
-public class Computer
+/*
+ * Nome: Andrea
+ * Cognome: Tosti
+ * Matricola: 518111
+ */
+
+class Computer
 {
     private boolean occupied;
 

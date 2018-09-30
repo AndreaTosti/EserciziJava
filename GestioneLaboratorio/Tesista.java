@@ -1,11 +1,17 @@
 package GestioneLaboratorio;
 
+/*
+ * Nome: Andrea
+ * Cognome: Tosti
+ * Matricola: 518111
+ */
+
 public class Tesista extends Utente
 {
-    /* indice computer in cui è installato il software utile al tesista */
+    /* computer in cui è installato il software utile al tesista */
     private int computerId;
 
-    public Tesista(Tutor tutor, int id, int computerId)
+    Tesista(Tutor tutor, int id, int computerId)
     {
         super(tutor, id);
         this.computerId = computerId;
@@ -13,6 +19,7 @@ public class Tesista extends Utente
 
     public void usaComputer() throws  InterruptedException
     {
+        /* Passo come parametro anche un riferimento all'oggetto di Tesista */
         tutor.usaComputerDaTesista(computerId, this);
     }
 
@@ -24,8 +31,7 @@ public class Tesista extends Utente
     @Override
     public String toString()
     {
-        return String.format("Tesista%d",
-                getId());
+        return String.format("Tesista%d", getId());
     }
 
 }
