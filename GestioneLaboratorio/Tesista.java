@@ -20,4 +20,12 @@ public class Tesista extends Utente
     {
         tutor.lasciaComputerDaTesista(computerId);
     }
+
+    @Override
+    public String toString()
+    {
+        return String.format("Tesista%d",
+                getId());
+    }
+
 }

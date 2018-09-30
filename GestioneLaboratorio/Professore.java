@@ -16,4 +16,11 @@ public class Professore extends Utente
     {
         tutor.lasciaComputerDaProfessore();
     }
+
+    @Override
+    public String toString()
+    {
+        return String.format("Professore%d",
+                getId());
+    }
 }

@@ -18,4 +18,11 @@ public class Studente extends Utente
     {
         tutor.lasciaComputerDaStudente(computerId);
     }
+
+    @Override
+    public String toString()
+    {
+        return String.format("Studente%d",
+                getId());
+    }
 }
