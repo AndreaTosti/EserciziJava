@@ -18,10 +18,10 @@ public class UfficioPostale
 
     /* numero massimo di task che possono stare nella seconda sala, che equivale
        ad avere al massimo k persone nella seconda sala */
-    private static final int capacitaCodaSportelli = 5;
+    private static final int capacitaCodaSportelli = 1;
 
     /* Numero di task da far entrare nella prima sala */
-    private static final int numTasks = 20;
+    private static final int numTasks = 50;
 
     /* Ogni task viene servito dall'addetto allo sportello per un numero di
        secondi random che va da 0 a secondiMassimiTask */
