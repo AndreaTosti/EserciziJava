@@ -4,23 +4,27 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 class Worker implements Runnable
 {
-    LinkedBlockingQueue<ContoCorrente> codaContiCorrenti;
+    private LinkedBlockingQueue<ContoCorrente> codaContiCorrenti;
+    private Contatore contatore;
 
-    Worker(LinkedBlockingQueue<ContoCorrente> codaContiCorrenti)
+    Worker(LinkedBlockingQueue<ContoCorrente> codaContiCorrenti,
+           Contatore contatore)
     {
         this.codaContiCorrenti = codaContiCorrenti;
+        this.contatore = contatore;
     }
+
     @Override
     public void run()
     {
-        int k = 0;
-        String filename = "conticorrenti.ser";
+        int a = 0;
+        int b = 0;
         ContoCorrente contoCorrente;
         while((contoCorrente = codaContiCorrenti.poll()) != null)
         {
-            k += contoCorrente.getNumeroDiMovimenti("Bonifico");
-            k += contoCorrente.getNumeroDiMovimenti("Accredito");
+            b += contoCorrente.getNumeroDiMovimenti("Bonifico");
+            a += contoCorrente.getNumeroDiMovimenti("Accredito");
         }
-        System.out.println(k);
+        contatore.aggiornaContatore(a, b);
     }
 }

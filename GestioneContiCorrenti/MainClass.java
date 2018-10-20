@@ -9,6 +9,7 @@ import java.io.ObjectOutputStream;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 public class MainClass
 {
@@ -16,6 +17,7 @@ public class MainClass
     {
         /* File contentente gli oggetti ContoCorrente serializzati */
         String filename = "conticorrenti.ser";
+        Contatore contatore = new Contatore();
 
         LinkedBlockingQueue<ContoCorrente> codaContiCorrenti =
                 new LinkedBlockingQueue<>();
@@ -59,10 +61,8 @@ public class MainClass
                 for(int i = 0; i < 100; i++)
                 {
                     contoCorrente = (ContoCorrente)in.readObject();
-                    codaContiCorrenti.put(contoCorrente);
                     /* Passo gli oggetti ai thread del Pool */
-                    //b += contoCorrente.getNumeroDiMovimenti("Accredito");
-                    //a += contoCorrente.getNumeroDiMovimenti("Bonifico");
+                    codaContiCorrenti.put(contoCorrente);
                 }
             }
             catch(Exception ex)
@@ -81,8 +81,17 @@ public class MainClass
                 Executors.newFixedThreadPool(4);
         for(int i = 0; i < 4; i++)
         {
-            execWorkers.execute(new Worker(codaContiCorrenti));
+            execWorkers.execute(new Worker(codaContiCorrenti, contatore));
         }
         execWorkers.shutdown();
+        try
+        {
+            execWorkers.awaitTermination(3, TimeUnit.MINUTES);
+        }
+        catch(InterruptedException e)
+        {
+            e.printStackTrace();
+        }
+        contatore.printContatore();
     }
 }
