@@ -1,7 +1,5 @@
 package GestioneContiCorrenti;
 
-import GestioneLaboratorio.Professore;
-
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
@@ -15,29 +13,46 @@ public class MainClass
 {
     public static void main(String[] args)
     {
-        /* File contentente gli oggetti ContoCorrente serializzati */
+        /* File contenente gli oggetti ContoCorrente serializzati */
         String filename = "conticorrenti.ser";
+
         Contatore contatore = new Contatore();
 
         LinkedBlockingQueue<ContoCorrente> codaContiCorrenti =
                 new LinkedBlockingQueue<>();
 
+        final int numWorkers = 4;
+        ExecutorService execWorkers =
+                Executors.newFixedThreadPool(numWorkers);
+
         /* Try with resources */
         try(FileOutputStream fos = new FileOutputStream(filename);
             ObjectOutputStream out = new ObjectOutputStream(fos))
         {
-            for(int i = 0; i < 100; i++)
+            for(int i = 0; i < 200; i++)
             {
-                ContoCorrente contoCorrente = new ContoCorrente("Andrea");
-                for(int j = 0; j < 100; j++)
+                ContoCorrente contoCorrente = new ContoCorrente("");
+                for(int j = 0; j < 600; j++)
                 {
-                    if(j % 2 == 0)
+                    if(j % 5 == 0)
                     {
                         contoCorrente.addMovimento("Bonifico");
                     }
-                    else
+                    else if(j % 5 == 1)
                     {
                         contoCorrente.addMovimento("Accredito");
+                    }
+                    else if(j % 5 == 2)
+                    {
+                        contoCorrente.addMovimento("Bollettino");
+                    }
+                    else if(j % 5 == 3)
+                    {
+                        contoCorrente.addMovimento("F24");
+                    }
+                    else if(j % 5 == 4)
+                    {
+                        contoCorrente.addMovimento("PagoBancomat");
                     }
                 }
                 out.writeObject(contoCorrente);
@@ -47,7 +62,9 @@ public class MainClass
         {
             e.printStackTrace();
         }
-
+        System.out.println("MAIN: Inseriti tutti i conti correnti e i relativi" +
+                            " movimenti");
+        long startTime = System.currentTimeMillis();
         ContoCorrente contoCorrente = null;
 
         int b = 0;
@@ -58,7 +75,7 @@ public class MainClass
         {
             try
             {
-                for(int i = 0; i < 100; i++)
+                for(int i = 0; i < 200; i++)
                 {
                     contoCorrente = (ContoCorrente)in.readObject();
                     /* Passo gli oggetti ai thread del Pool */
@@ -69,29 +86,29 @@ public class MainClass
             {
                 ex.printStackTrace();
             }
-            //System.out.printf("A = %d B = %d\n", a, b);
         }
         catch(Exception e)
         {
             e.printStackTrace();
         }
 
-
-        ExecutorService execWorkers =
-                Executors.newFixedThreadPool(4);
-        for(int i = 0; i < 4; i++)
+        for(int i = 0; i < numWorkers; i++)
         {
             execWorkers.execute(new Worker(codaContiCorrenti, contatore));
         }
         execWorkers.shutdown();
         try
         {
-            execWorkers.awaitTermination(3, TimeUnit.MINUTES);
+            execWorkers.awaitTermination(1, TimeUnit.SECONDS);
         }
         catch(InterruptedException e)
         {
             e.printStackTrace();
         }
+        long stopTime = System.currentTimeMillis();
+        long elapsedTime = stopTime - startTime;
+        System.out.println(elapsedTime + "ms");
         contatore.printContatore();
+
     }
 }

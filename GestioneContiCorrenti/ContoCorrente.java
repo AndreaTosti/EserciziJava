@@ -12,6 +12,12 @@ class ContoCorrente implements Serializable
     private String nomeCorrentista;     /* il nome del correntista */
     private LinkedList<Movimento> listaMovimenti;
 
+    private int kBonifico;
+    private int kAccredito;
+    private int kBollettino;
+    private int kF24;
+    private int kPagoBancomat;
+
     ContoCorrente(String nomeCorrentista)
     {
         this.nomeCorrentista = nomeCorrentista;
@@ -28,18 +34,53 @@ class ContoCorrente implements Serializable
         Date currentDate = Calendar.getInstance().getTime();
         Movimento m = new Movimento(currentDate, causale);
         listaMovimenti.add(m);
+        if(causale.compareTo("Bonifico") == 0)
+        {
+            kBonifico++;
+        }
+        else if(causale.compareTo("Accredito") == 0)
+        {
+            kAccredito++;
+        }
+        else if(causale.compareTo("Bollettino") == 0)
+        {
+            kBollettino++;
+        }
+        else if(causale.compareTo("F24") == 0)
+        {
+            kF24++;
+        }
+        else if(causale.compareTo("PagoBancomat") == 0)
+        {
+            kPagoBancomat++;
+        }
     }
 
     int getNumeroDiMovimenti(String causale)
     {
-        int k = 0;
-        for(Movimento m : listaMovimenti)
+        if(causale.compareTo("Bonifico") == 0)
         {
-            if(m.getCausale().compareTo(causale) == 0)
-            {
-                k++;
-            }
+            return kBonifico;
         }
-        return k;
+        else if(causale.compareTo("Accredito") == 0)
+        {
+            return kAccredito;
+        }
+        else if(causale.compareTo("Bollettino") == 0)
+        {
+            return kBollettino;
+        }
+        else if(causale.compareTo("F24") == 0)
+        {
+            return kF24;
+        }
+        else if(causale.compareTo("PagoBancomat") == 0)
+        {
+            return kPagoBancomat;
+        }
+        else
+        {
+            return 0;
+        }
     }
 }
