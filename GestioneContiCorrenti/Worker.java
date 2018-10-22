@@ -17,21 +17,46 @@ class Worker implements Runnable
     @Override
     public void run()
     {
-        int bonifico = 0;
-        int accredito = 0;
-        int bollettino = 0;
-        int f24 = 0;
-        int pagobancomat = 0;
+        int kBonifico = 0;
+        int kAccredito = 0;
+        int kBollettino = 0;
+        int kF24 = 0;
+        int kPagobancomat = 0;
+
         ContoCorrente contoCorrente;
+
         while((contoCorrente = codaContiCorrenti.poll()) != null)
         {
-            bonifico += contoCorrente.getNumeroDiMovimenti("Bonifico");
-            accredito += contoCorrente.getNumeroDiMovimenti("Accredito");
-            bollettino += contoCorrente.getNumeroDiMovimenti("Bollettino");
-            f24 += contoCorrente.getNumeroDiMovimenti("F24");
-            pagobancomat += contoCorrente.getNumeroDiMovimenti("PagoBancomat");
+            for(Movimento m : contoCorrente.getListaMovimenti())
+            {
+                switch(m.getCausale())
+                {
+                    case BONIFICO:
+                        kBonifico++;
+                        break;
+                    case ACCREDITO:
+                        kAccredito++;
+                        break;
+                    case BOLLETTINO:
+                        kBollettino++;
+                        break;
+                    case F24:
+                        kF24++;
+                        break;
+                    case PAGOBANCOMAT:
+                        kPagobancomat++;
+                        break;
+                    default:
+                        break;
+                }
+            }
         }
-        contatore.aggiornaContatore(Thread.currentThread(), bonifico, accredito,
-                                        bollettino, f24, pagobancomat);
+        contatore.aggiornaContatore(
+                Thread.currentThread(),
+                kBonifico,
+                kAccredito,
+                kBollettino,
+                kF24,
+                kPagobancomat);
     }
 }

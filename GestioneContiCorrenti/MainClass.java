@@ -21,7 +21,16 @@ public class MainClass
         LinkedBlockingQueue<ContoCorrente> codaContiCorrenti =
                 new LinkedBlockingQueue<>();
 
-        final int numWorkers = 4;
+        if(args.length != 2)
+        {
+            System.err.print("You must put the following 2 arguments:" +
+                    " numWorkers and numContiCorrenti");
+            return;
+        }
+
+        Integer numWorkers = Integer.parseInt(args[0]);
+        Integer numContiCorrenti = Integer.parseInt(args[1]);
+
         ExecutorService execWorkers =
                 Executors.newFixedThreadPool(numWorkers);
 
@@ -29,30 +38,30 @@ public class MainClass
         try(FileOutputStream fos = new FileOutputStream(filename);
             ObjectOutputStream out = new ObjectOutputStream(fos))
         {
-            for(int i = 0; i < 200; i++)
+            for(int i = 0; i < numContiCorrenti; i++)
             {
-                ContoCorrente contoCorrente = new ContoCorrente("");
+                ContoCorrente contoCorrente = new ContoCorrente("Correntista" + i);
                 for(int j = 0; j < 600; j++)
                 {
                     if(j % 5 == 0)
                     {
-                        contoCorrente.addMovimento("Bonifico");
+                        contoCorrente.addMovimento(Movimento.Causale.BONIFICO);
                     }
                     else if(j % 5 == 1)
                     {
-                        contoCorrente.addMovimento("Accredito");
+                        contoCorrente.addMovimento(Movimento.Causale.ACCREDITO);
                     }
                     else if(j % 5 == 2)
                     {
-                        contoCorrente.addMovimento("Bollettino");
+                        contoCorrente.addMovimento(Movimento.Causale.BOLLETTINO);
                     }
                     else if(j % 5 == 3)
                     {
-                        contoCorrente.addMovimento("F24");
+                        contoCorrente.addMovimento(Movimento.Causale.F24);
                     }
                     else if(j % 5 == 4)
                     {
-                        contoCorrente.addMovimento("PagoBancomat");
+                        contoCorrente.addMovimento(Movimento.Causale.PAGOBANCOMAT);
                     }
                 }
                 out.writeObject(contoCorrente);
@@ -62,22 +71,22 @@ public class MainClass
         {
             e.printStackTrace();
         }
+
         System.out.println("MAIN: Inseriti tutti i conti correnti e i relativi" +
                             " movimenti");
+
         long startTime = System.currentTimeMillis();
+
         ContoCorrente contoCorrente = null;
 
-        int b = 0;
-        int a = 0;
         /* Try with resources */
         try(FileInputStream fis = new FileInputStream(filename);
             ObjectInputStream in = new ObjectInputStream(fis))
         {
             try
             {
-                for(int i = 0; i < 200; i++)
+                while((contoCorrente = (ContoCorrente)in.readObject()) != null)
                 {
-                    contoCorrente = (ContoCorrente)in.readObject();
                     /* Passo gli oggetti ai thread del Pool */
                     codaContiCorrenti.put(contoCorrente);
                 }
@@ -96,15 +105,18 @@ public class MainClass
         {
             execWorkers.execute(new Worker(codaContiCorrenti, contatore));
         }
+
         execWorkers.shutdown();
+
         try
         {
-            execWorkers.awaitTermination(1, TimeUnit.SECONDS);
+            execWorkers.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
         }
         catch(InterruptedException e)
         {
             e.printStackTrace();
         }
+
         long stopTime = System.currentTimeMillis();
         long elapsedTime = stopTime - startTime;
         System.out.println(elapsedTime + "ms");

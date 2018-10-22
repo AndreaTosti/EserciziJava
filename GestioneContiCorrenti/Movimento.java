@@ -5,16 +5,25 @@ import java.util.Date;
 
 class Movimento implements Serializable
 {
-    private Date data;
-    private String causale;
+    public enum Causale
+    {
+        BONIFICO,
+        ACCREDITO,
+        BOLLETTINO,
+        F24,
+        PAGOBANCOMAT
+    }
 
-    Movimento(Date data, String causale)
+    private Date data;
+    private Causale causale;
+
+    Movimento(Date data, Causale causale)
     {
         this.data = data;
         this.causale = causale;
     }
 
-    String getCausale()
+    Causale getCausale()
     {
         return causale;
     }
