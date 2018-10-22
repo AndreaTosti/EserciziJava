@@ -21,9 +21,3 @@ all'interno di quel conto corrente ed aggiorna un contatore globale.
 
 Alla fine il programma stampa per ogni possibile causale il numero totale 
 di occorrenze.
-
-(Prof)
-Un programma per scrivere sul file, un programma (lo stesso magari) che trova
-per ogni possibile causale quanti movimenti hanno quella causale.
-
-Nel file ci devono essere più conti correnti e per ogni conto corrente più movimenti

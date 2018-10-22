@@ -1,7 +1,7 @@
 package GestioneContiCorrenti;
 
 import java.io.Serializable;
-import java.util.Date;
+import java.util.GregorianCalendar;
 
 class Movimento implements Serializable
 {
@@ -14,10 +14,10 @@ class Movimento implements Serializable
         PAGOBANCOMAT
     }
 
-    private Date data;
+    private GregorianCalendar data;
     private Causale causale;
 
-    Movimento(Date data, Causale causale)
+    Movimento(GregorianCalendar data, Causale causale)
     {
         this.data = data;
         this.causale = causale;
@@ -28,7 +28,7 @@ class Movimento implements Serializable
         return causale;
     }
 
-    Date getData()
+    GregorianCalendar getData()
     {
         return data;
     }

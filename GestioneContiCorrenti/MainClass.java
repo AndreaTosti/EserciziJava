@@ -12,7 +12,9 @@ public class MainClass
         String filename = "conticorrenti.ser";
 
         /* Contatore globale del numero di occorrenze di ogni causale
-           all'interno di ogni conto corrente */
+           all'interno di ogni conto corrente;
+           Viene aggiornato in modo concorrente dai thread del pool,
+           la concorrenza è gestita mediante metodi synchronized*/
         Contatore contatore = new Contatore();
 
         /* Coda concorrente in cui il thread main inserisce gli oggetti di tipo
@@ -32,6 +34,11 @@ public class MainClass
 
         System.out.printf("Thread[%s] Num. Thread Workers: %d - Num. Conti Correnti: "
         + "%d\n", Thread.currentThread().getName(), numWorkers, numContiCorrenti);
+        System.out.printf("Thread[%s] Il file %s verrà memorizzato nella " +
+            "directory %s\n", Thread.currentThread().getName(), filename,
+                System.getProperty("user.dir"));
+        System.out.printf("Thread[%s] Attendere ...\n",
+                Thread.currentThread().getName());
 
         /* Pool di threads */
         ExecutorService execWorkers =
@@ -75,8 +82,12 @@ public class MainClass
         System.out.printf("Thread[%s] Serializzati tutti i conti correnti " +
                 "(NUM. TOTALE CAUSALI = %d)\n",
                 Thread.currentThread().getName(), numTotaleCausali);
+        System.out.printf("Thread[%s] Attendere ...\n",
+                Thread.currentThread().getName());
 
-
+        /* Memorizzo startTime per vedere il tempo impiegato per la
+           deserializzazione e all'inserimento in coda(poco rilevante rispetto
+           deserializzazione) da parte del main*/
         long startTime = System.currentTimeMillis();
 
         ContoCorrente contoCorrente = null;
@@ -94,8 +105,9 @@ public class MainClass
                 }catch(EOFException eof)
                 {
                     System.out.printf("Thread[%s] Deserializzati tutti i conti " +
-                        "correnti e inseriti in coda\n\n",
-                            Thread.currentThread().getName());
+                        "correnti e inseriti in coda (%d ms)\n\n",
+                            Thread.currentThread().getName(),
+                            System.currentTimeMillis() - startTime);
                     break;
                 }
             }
@@ -121,9 +133,7 @@ public class MainClass
             e.printStackTrace();
         }
 
-        long stopTime = System.currentTimeMillis();
-        long elapsedTime = stopTime - startTime;
-        contatore.printContatore(Thread.currentThread(), elapsedTime);
+        contatore.printContatore(Thread.currentThread());
 
     }
 }

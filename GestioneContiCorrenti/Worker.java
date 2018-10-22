@@ -25,6 +25,8 @@ class Worker implements Runnable
 
         ContoCorrente contoCorrente;
 
+        /* Prelevo un conto corrente dalla coda, per ogni suo movimento aggiorno
+           i contatori relativi alle causali di tali movimenti */
         while((contoCorrente = codaContiCorrenti.poll()) != null)
         {
             for(Movimento m : contoCorrente.getListaMovimenti())
