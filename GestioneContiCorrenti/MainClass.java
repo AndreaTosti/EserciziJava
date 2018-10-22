@@ -1,13 +1,8 @@
 package GestioneContiCorrenti;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
+import java.io.*;
+import java.util.concurrent.*;
+import java.security.SecureRandom;
 
 public class MainClass
 {
@@ -16,8 +11,12 @@ public class MainClass
         /* File contenente gli oggetti ContoCorrente serializzati */
         String filename = "conticorrenti.ser";
 
+        /* Contatore globale del numero di occorrenze di ogni causale
+           all'interno di ogni conto corrente */
         Contatore contatore = new Contatore();
 
+        /* Coda concorrente in cui il thread main inserisce gli oggetti di tipo
+           ContoCorrente e da cui i thread del pool estraggono tali oggetti */
         LinkedBlockingQueue<ContoCorrente> codaContiCorrenti =
                 new LinkedBlockingQueue<>();
 
@@ -28,42 +27,43 @@ public class MainClass
             return;
         }
 
-        Integer numWorkers = Integer.parseInt(args[0]);
-        Integer numContiCorrenti = Integer.parseInt(args[1]);
+        int numWorkers = Integer.parseInt(args[0]);
+        int numContiCorrenti = Integer.parseInt(args[1]);
 
+        System.out.printf("Thread[%s] Num. Thread Workers: %d - Num. Conti Correnti: "
+        + "%d\n", Thread.currentThread().getName(), numWorkers, numContiCorrenti);
+
+        /* Pool di threads */
         ExecutorService execWorkers =
                 Executors.newFixedThreadPool(numWorkers);
 
-        /* Try with resources */
+        SecureRandom randomNumbers = new SecureRandom();
+
+        int numTotaleCausali = 0;
+
+        /* Per indicizzare l'enum in modo efficiente, memorizzo un array
+           all'esterno del loop */
+        final Movimento.Causale[] arrayCausali = Movimento.Causale.values();
+
+        /* Genero dei conti correnti con i relativi movimenti in modo casuale */
         try(FileOutputStream fos = new FileOutputStream(filename);
             ObjectOutputStream out = new ObjectOutputStream(fos))
         {
             for(int i = 0; i < numContiCorrenti; i++)
             {
                 ContoCorrente contoCorrente = new ContoCorrente("Correntista" + i);
-                for(int j = 0; j < 600; j++)
+
+                /* Aggiungo un numero random di movimenti */
+                int numRandomMovimenti = randomNumbers.nextInt(700);
+                for(int j = 0; j < numRandomMovimenti; j++)
                 {
-                    if(j % 5 == 0)
-                    {
-                        contoCorrente.addMovimento(Movimento.Causale.BONIFICO);
-                    }
-                    else if(j % 5 == 1)
-                    {
-                        contoCorrente.addMovimento(Movimento.Causale.ACCREDITO);
-                    }
-                    else if(j % 5 == 2)
-                    {
-                        contoCorrente.addMovimento(Movimento.Causale.BOLLETTINO);
-                    }
-                    else if(j % 5 == 3)
-                    {
-                        contoCorrente.addMovimento(Movimento.Causale.F24);
-                    }
-                    else if(j % 5 == 4)
-                    {
-                        contoCorrente.addMovimento(Movimento.Causale.PAGOBANCOMAT);
-                    }
+                    // Scelgo una causale random
+                    numTotaleCausali++;
+                    int causaleRandom =
+                            randomNumbers.nextInt(arrayCausali.length);
+                    contoCorrente.addMovimento(arrayCausali[causaleRandom]);
                 }
+                /* Scrivo su file l'oggetto serializzato */
                 out.writeObject(contoCorrente);
             }
         }
@@ -72,8 +72,10 @@ public class MainClass
             e.printStackTrace();
         }
 
-        System.out.println("MAIN: Inseriti tutti i conti correnti e i relativi" +
-                            " movimenti");
+        System.out.printf("Thread[%s] Serializzati tutti i conti correnti " +
+                "(NUM. TOTALE CAUSALI = %d)\n",
+                Thread.currentThread().getName(), numTotaleCausali);
+
 
         long startTime = System.currentTimeMillis();
 
@@ -83,17 +85,19 @@ public class MainClass
         try(FileInputStream fis = new FileInputStream(filename);
             ObjectInputStream in = new ObjectInputStream(fis))
         {
-            try
+            while(true)
             {
-                while((contoCorrente = (ContoCorrente)in.readObject()) != null)
+                try
                 {
                     /* Passo gli oggetti ai thread del Pool */
-                    codaContiCorrenti.put(contoCorrente);
+                    codaContiCorrenti.put((ContoCorrente) in.readObject());
+                }catch(EOFException eof)
+                {
+                    System.out.printf("Thread[%s] Deserializzati tutti i conti " +
+                        "correnti e inseriti in coda\n",
+                            Thread.currentThread().getName());
+                    break;
                 }
-            }
-            catch(Exception ex)
-            {
-                ex.printStackTrace();
             }
         }
         catch(Exception e)
@@ -120,7 +124,7 @@ public class MainClass
         long stopTime = System.currentTimeMillis();
         long elapsedTime = stopTime - startTime;
         System.out.println(elapsedTime + "ms");
-        contatore.printContatore();
+        contatore.printContatore(Thread.currentThread());
 
     }
 }

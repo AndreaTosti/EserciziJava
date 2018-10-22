@@ -7,9 +7,10 @@ import java.util.LinkedList;
 
 class ContoCorrente implements Serializable
 {
-    private static final long serialVersionUID = 1;
+    /* il nome del correntista */
+    private String nomeCorrentista;
 
-    private String nomeCorrentista;     /* il nome del correntista */
+    /* lista dei movimenti per il conto corrente */
     private LinkedList<Movimento> listaMovimenti;
 
     ContoCorrente(String nomeCorrentista)
