@@ -94,7 +94,7 @@ public class MainClass
                 }catch(EOFException eof)
                 {
                     System.out.printf("Thread[%s] Deserializzati tutti i conti " +
-                        "correnti e inseriti in coda\n",
+                        "correnti e inseriti in coda\n\n",
                             Thread.currentThread().getName());
                     break;
                 }
@@ -123,8 +123,7 @@ public class MainClass
 
         long stopTime = System.currentTimeMillis();
         long elapsedTime = stopTime - startTime;
-        System.out.println(elapsedTime + "ms");
-        contatore.printContatore(Thread.currentThread());
+        contatore.printContatore(Thread.currentThread(), elapsedTime);
 
     }
 }

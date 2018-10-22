@@ -37,14 +37,17 @@ class Contatore
 
     }
 
-    synchronized void printContatore(Thread thread)
+    synchronized void printContatore(Thread thread, long elapsedTime)
     {
-        System.out.printf("\nThread[%s] kBonifico = %d kAccredito = %d " +
-                  "kBollettino = %d kF24 = %d kPagoBancomat = %d \n\t\t" +
-                  "(NUM. TOTALE CAUSALI = %d)\n",
-                  thread.getName(), kBonifico, kAccredito,
-                  kBollettino, kF24, kPagoBancomat,
-                  kBonifico + kAccredito + kBollettino + kF24 + kPagoBancomat);
+        System.out.printf("\nThread[%s] Stampa stato contatore :\n\t\t" +
+            "kBonifico = %d kAccredito = %d " +
+            "kBollettino = %d kF24 = %d kPagoBancomat = %d \n\t\t" +
+            "(NUM. TOTALE CAUSALI = %d)\n\t\t" +
+            "Tempo impiegato dal pool di thread : %d ms\n",
+            thread.getName(), kBonifico, kAccredito,
+            kBollettino, kF24, kPagoBancomat,
+            kBonifico + kAccredito + kBollettino + kF24 + kPagoBancomat,
+            elapsedTime);
     }
 
 }
