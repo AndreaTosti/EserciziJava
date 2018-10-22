@@ -26,10 +26,10 @@ class Contatore
     {
         kBonifico += nBonifico;
         kAccredito += nAccredito;
-        kBollettino += nAccredito;
+        kBollettino += nBollettino;
         kF24 += nF24;
         kPagoBancomat += nPagoBancomat;
-        System.out.printf("Contatore aggiornato dal thread %s : \n\t\t" +
+        System.out.printf("%s Contatore aggiornato : \n\t\t" +
                           "kBonifico = %d kAccredito = %d kBollettino = %d" +
                           " kF24 = %d kPagoBancomat = %d\n",
                           thread, kBonifico, kAccredito, kBollettino,
@@ -37,12 +37,14 @@ class Contatore
 
     }
 
-    synchronized void printContatore()
+    synchronized void printContatore(Thread thread)
     {
-        System.out.printf("\nkBonifico = %d kAccredito = %d kBollettino = %d" +
-                          " kF24 = %d kPagoBancomat = %d",
-                            kBonifico, kAccredito, kBollettino,
-                            kF24, kPagoBancomat);
+        System.out.printf("\nThread[%s] kBonifico = %d kAccredito = %d " +
+                  "kBollettino = %d kF24 = %d kPagoBancomat = %d \n\t\t" +
+                  "(NUM. TOTALE CAUSALI = %d)\n",
+                  thread.getName(), kBonifico, kAccredito,
+                  kBollettino, kF24, kPagoBancomat,
+                  kBonifico + kAccredito + kBollettino + kF24 + kPagoBancomat);
     }
 
 }
