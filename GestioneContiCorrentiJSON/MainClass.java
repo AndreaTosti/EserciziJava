@@ -27,18 +27,21 @@ public class MainClass
 
         /* Coda concorrente in cui il thread main inserisce gli oggetti di tipo
            ContoCorrente e da cui i thread del pool estraggono tali oggetti */
-        LinkedBlockingQueue<ContoCorrente> codaContiCorrenti = new LinkedBlockingQueue<>();
+        LinkedBlockingQueue<ContoCorrente> codaContiCorrenti =
+                new LinkedBlockingQueue<>();
 
         if(args.length != 2)
         {
-            System.err.print("You must put the following 2 arguments:" + " numWorkers and numContiCorrenti");
+            System.err.print("You must put the following 2 arguments:" +
+                    " numWorkers and numContiCorrenti");
             return;
         }
 
         int numWorkers = Integer.parseInt(args[0]);
         int numContiCorrenti = Integer.parseInt(args[1]);
 
-        System.out.printf("Thread[%s] Num. Thread Workers: %d - Num. Conti Correnti: " + "%d\n", Thread.currentThread().getName(), numWorkers, numContiCorrenti);
+        System.out.printf("Thread[%s] Num. Thread Workers: %d - Num. Conti Correnti: " +
+                "%d\n", Thread.currentThread().getName(), numWorkers, numContiCorrenti);
 
         /* Pool di threads */
         ExecutorService execWorkers = Executors.newFixedThreadPool(numWorkers);
@@ -54,6 +57,8 @@ public class MainClass
         //ObjectWriter objectMapper = new ObjectMapper().writer().withDefaultPrettyPrinter();
 
         ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(SerializationFeature.INDENT_OUTPUT, true);
+        List<ContoCorrente> conti= new LinkedList<ContoCorrente>();
         /* Genero dei conti correnti con i relativi movimenti in modo casuale */
         try
         {
@@ -61,7 +66,7 @@ public class MainClass
             {
                 ContoCorrente contoCorrente = new ContoCorrente("Correntista" + i);
                 /* Aggiungo un numero random di movimenti */
-                int numRandomMovimenti = randomNumbers.nextInt(40);
+                int numRandomMovimenti = randomNumbers.nextInt(700);
                 for(int j = 0; j < numRandomMovimenti; j++)
                 {
                     // Scelgo una causale random
@@ -69,30 +74,40 @@ public class MainClass
                     int causaleRandom = randomNumbers.nextInt(arrayCausali.length);
                     contoCorrente.addMovimento(arrayCausali[causaleRandom]);
                 }
-                //mapper.configure(SerializationFeature.INDENT_OUTPUT, true);
-                mapper.writeValue(new File(filename), contoCorrente);
+                conti.add(contoCorrente);
             }
+            mapper.writeValue(new File(filename), conti);
             // Scrivo i conti correnti sul file filename
         }catch(Exception e)
         {
             e.printStackTrace();
         }
 
-        System.out.printf("Thread[%s] Serializzati tutti i conti correnti " + "(NUM. TOTALE CAUSALI = %d)\n", Thread.currentThread().getName(), numTotaleCausali);
+        System.out.printf("Thread[%s] Serializzati tutti i conti correnti " +
+                "(NUM. TOTALE CAUSALI = %d)\n",
+                Thread.currentThread().getName(), numTotaleCausali);
 
 
         long startTime = System.currentTimeMillis();
 
         try
         {
-            //LinkedList<ContoCorrente> lista2 = new LinkedList<>();
-            //lista2 = mapper.readValue(new File(filename), LinkedList<Cont>.class);
 
-            ContoCorrente program1 = mapper.readValue(new File(filename), ContoCorrente.class);
+            TypeReference<List<ContoCorrente>> mapType =
+                    new TypeReference<List<ContoCorrente>>() {};
+            List<ContoCorrente> lista =
+                    mapper.readValue(new File(filename), mapType);
             try
             {
-                //System.out.println(program1.getListaMovimenti().getFirst().getCausale());
-                    codaContiCorrenti.put(program1);
+                for(ContoCorrente cc: lista)
+                {
+                    codaContiCorrenti.put(cc);
+                    System.out.println(cc.getListaMovimenti().getLast().getData());
+                }
+                System.out.printf("Thread[%s] Deserializzati tutti i conti " +
+                                "correnti e inseriti in coda\n\n",
+                        Thread.currentThread().getName());
+
             }catch(InterruptedException e)
             {
                 e.printStackTrace();
@@ -102,10 +117,6 @@ public class MainClass
             e.printStackTrace();
         }
 
-                    /*System.out.printf("Thread[%s] Deserializzati tutti i conti " +
-                        "correnti e inseriti in coda\n\n",
-                            Thread.currentThread().getName());
-                    break;*/
         for(int i = 0; i < numWorkers; i++)
         {
             execWorkers.execute(new Worker(codaContiCorrenti, contatore));
