@@ -1,5 +1,3 @@
-package GestioneLaboratorio;
-
 /*
  * Nome: Andrea
  * Cognome: Tosti
