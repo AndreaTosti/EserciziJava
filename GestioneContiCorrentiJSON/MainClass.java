@@ -1,7 +1,6 @@
-//package GestioneContiCorrentiJSON;
+package GestioneContiCorrentiJSON;
 
 import java.io.*;
-
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.*;
@@ -102,6 +101,7 @@ public class MainClass
         TypeReference<List<ContoCorrente>> mapType =
                     new TypeReference<List<ContoCorrente>>() {};
 
+        /* Preparo una lista in cui inserire tutti i conti correnti letti */
         List<ContoCorrente> lista = null;
 
         //lista = mapper.readValue(new File(filename), mapType);
@@ -109,14 +109,18 @@ public class MainClass
         try(FileInputStream fis = new FileInputStream(filename);
             FileChannel inChannel = fis.getChannel())
         {
+            /* Alloco un buffer di grandezza pari a quella del file */
             ByteBuffer buf = ByteBuffer.allocate(fis.available());
             inChannel.read(buf);
             lista = mapper.readValue(buf.array(), mapType);
+            /* Passo gli oggetti ai thread del Pool */
             for(ContoCorrente cc: lista)
             {
                 codaContiCorrenti.put(cc);
             }
-            System.out.printf("Thread[%s] Deserializzati tutti i conti " + "correnti e inseriti in coda\n\n", Thread.currentThread().getName());
+            System.out.printf("Thread[%s] Deserializzati tutti i conti " +
+                    "correnti e inseriti in coda\n\n",
+                    Thread.currentThread().getName());
         }catch(IOException | InterruptedException e)
         {
             e.printStackTrace();
@@ -141,5 +145,7 @@ public class MainClass
         long stopTime = System.currentTimeMillis();
         long elapsedTime = stopTime - startTime;
         contatore.printContatore(Thread.currentThread(), elapsedTime);
+        System.out.printf("\t\tDimensione del file di descrizione dei conti " +
+                "correnti: %1.2f Mb", new File(filename).length()/(1024.0f*1024.0f));
     }
 }

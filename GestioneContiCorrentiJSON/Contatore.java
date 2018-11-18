@@ -1,4 +1,4 @@
-//package GestioneContiCorrentiJSON;
+package GestioneContiCorrentiJSON;
 
 class Contatore
 {

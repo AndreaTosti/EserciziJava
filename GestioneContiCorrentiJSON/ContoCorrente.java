@@ -1,4 +1,4 @@
-//package GestioneContiCorrentiJSON;
+package GestioneContiCorrentiJSON;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonValue;
