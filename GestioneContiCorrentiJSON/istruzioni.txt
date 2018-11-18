@@ -1,0 +1,5 @@
+Per compilare (Linux)
+javac -cp ".:jackson-annotations-2.9.7.jar:jackson-core-2.9.7.jar:jackson-databind-2.9.7.jar" MainClass.java
+
+Per eseguire (Linux)
+java -cp ".:jackson-annotations-2.9.7.jar:jackson-core-2.9.7.jar:jackson-databind-2.9.7.jar" MainClass 2 200
