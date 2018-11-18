@@ -1,18 +1,12 @@
 package GestioneContiCorrentiJSON;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.*;
 import java.security.SecureRandom;
 import java.nio.*;
 
-import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.*;
 
 public class MainClass
@@ -54,11 +48,12 @@ public class MainClass
            all'esterno del loop */
         final Movimento.Causale[] arrayCausali = Movimento.Causale.values();
 
-        //ObjectWriter objectMapper = new ObjectMapper().writer().withDefaultPrettyPrinter();
-
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(SerializationFeature.INDENT_OUTPUT, true);
+
+        /* Preparo una lista in cui inserire tutti i conti correnti generati */
         List<ContoCorrente> conti= new LinkedList<ContoCorrente>();
+
         /* Genero dei conti correnti con i relativi movimenti in modo casuale */
         try
         {
@@ -76,8 +71,8 @@ public class MainClass
                 }
                 conti.add(contoCorrente);
             }
+            /* Scrivo i conti correnti sul file filename */
             mapper.writeValue(new File(filename), conti);
-            // Scrivo i conti correnti sul file filename
         }catch(Exception e)
         {
             e.printStackTrace();
@@ -102,7 +97,6 @@ public class MainClass
                 for(ContoCorrente cc: lista)
                 {
                     codaContiCorrenti.put(cc);
-                    System.out.println(cc.getListaMovimenti().getLast().getData());
                 }
                 System.out.printf("Thread[%s] Deserializzati tutti i conti " +
                                 "correnti e inseriti in coda\n\n",
@@ -136,6 +130,5 @@ public class MainClass
         long stopTime = System.currentTimeMillis();
         long elapsedTime = stopTime - startTime;
         contatore.printContatore(Thread.currentThread(), elapsedTime);
-
     }
 }
