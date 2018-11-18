@@ -1,10 +1,13 @@
-package GestioneContiCorrentiJSON;
+//package GestioneContiCorrentiJSON;
 
 import java.io.*;
-import java.util.*;
+
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.*;
 import java.security.SecureRandom;
-import java.nio.*;
+import java.nio.channels.FileChannel;
+import java.nio.ByteBuffer;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.*;
@@ -49,6 +52,8 @@ public class MainClass
         final Movimento.Causale[] arrayCausali = Movimento.Causale.values();
 
         ObjectMapper mapper = new ObjectMapper();
+
+        /* Per avere un file .json piu' leggibile */
         mapper.configure(SerializationFeature.INDENT_OUTPUT, true);
 
         /* Preparo una lista in cui inserire tutti i conti correnti generati */
@@ -71,8 +76,18 @@ public class MainClass
                 }
                 conti.add(contoCorrente);
             }
-            /* Scrivo i conti correnti sul file filename */
-            mapper.writeValue(new File(filename), conti);
+            /* Scrivo la lista dei conti correnti sul file filename */
+
+            //mapper.writeValue(new File(filename), conti);
+
+            byte[] contiBytes = mapper.writeValueAsBytes(conti);
+            File fileJson = new File(filename);
+            try(FileOutputStream fos  = new FileOutputStream(fileJson, false);
+                FileChannel outchannel = fos.getChannel();)
+            {
+                ByteBuffer bytebuffer = ByteBuffer.wrap(contiBytes);
+                outchannel.write(bytebuffer);
+            }
         }catch(Exception e)
         {
             e.printStackTrace();
@@ -82,31 +97,27 @@ public class MainClass
                 "(NUM. TOTALE CAUSALI = %d)\n",
                 Thread.currentThread().getName(), numTotaleCausali);
 
-
         long startTime = System.currentTimeMillis();
 
-        try
-        {
-
-            TypeReference<List<ContoCorrente>> mapType =
+        TypeReference<List<ContoCorrente>> mapType =
                     new TypeReference<List<ContoCorrente>>() {};
-            List<ContoCorrente> lista =
-                    mapper.readValue(new File(filename), mapType);
-            try
-            {
-                for(ContoCorrente cc: lista)
-                {
-                    codaContiCorrenti.put(cc);
-                }
-                System.out.printf("Thread[%s] Deserializzati tutti i conti " +
-                                "correnti e inseriti in coda\n\n",
-                        Thread.currentThread().getName());
 
-            }catch(InterruptedException e)
+        List<ContoCorrente> lista = null;
+
+        //lista = mapper.readValue(new File(filename), mapType);
+
+        try(FileInputStream fis = new FileInputStream(filename);
+            FileChannel inChannel = fis.getChannel())
+        {
+            ByteBuffer buf = ByteBuffer.allocate(fis.available());
+            inChannel.read(buf);
+            lista = mapper.readValue(buf.array(), mapType);
+            for(ContoCorrente cc: lista)
             {
-                e.printStackTrace();
+                codaContiCorrenti.put(cc);
             }
-        }catch(IOException e)
+            System.out.printf("Thread[%s] Deserializzati tutti i conti " + "correnti e inseriti in coda\n\n", Thread.currentThread().getName());
+        }catch(IOException | InterruptedException e)
         {
             e.printStackTrace();
         }

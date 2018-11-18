@@ -1,0 +1,18 @@
+* Nome: Andrea
+* Cognome: Tosti
+* Matricola: 518111
+
+Il file MainClass.java contiene il metodo main.
+
+Dopo aver compilato il file MainClass.java insieme a
+Computer.java Professore.java
+Studente.java Tesista.java
+Tutor.java Utente.java
+
+sarà possibile eseguire il comando
+java MainClass numStudenti numTesisti numProfessori
+
+Esempi:
+java MainClass 3 4 1
+java MainClass 0 0 5
+java MainClass 0 10 0
