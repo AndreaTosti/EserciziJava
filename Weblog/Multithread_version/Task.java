@@ -1,4 +1,4 @@
-package Weblog;
+package Weblog.Multithread_version;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,7 +26,9 @@ public class Task implements Runnable
         Pattern pattern = Pattern.compile(ipv4Pattern);
         try
         {
-            while((linea = lineeIn.take()).compareTo("\n") != 0)
+            /* Il thread termina quando gli viene inviato, dal main thread,
+                \n nella coda */
+            while((linea = lineeIn.take()).compareTo(System.lineSeparator()) != 0)
             {
                 Matcher matcher = pattern.matcher(linea);
                 final String[] secondPart = linea.split(ipv4Pattern);
@@ -35,6 +37,8 @@ public class Task implements Runnable
                 {
                     if (matcher.find())
                     {
+                        /* Risolvo l'indirizzo IP */
+                        /* matcher.group(0) è l'IP, secondPart[1] e il resto della riga */
                         address = InetAddress.getByName(matcher.group(0));
                         lineeOut.put(address.getHostName() + secondPart[1]);
                     }

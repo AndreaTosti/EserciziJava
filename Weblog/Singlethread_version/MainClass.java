@@ -1,21 +1,20 @@
-package Weblog.Multithread_version;
+package Weblog.Singlethread_version;
 
-import java.io.*;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MainClass
 {
     public static void main(String[] args)
     {
-        /* Numero dei threads del threadpool */
-        final int numThreads = 32;
-
         /* Nome del file creato con gli indirizzi ip risolti */
-        String nomeNuovoFile = "web.log.multithread.518111.txt";
+        String nomeNuovoFile = "web.log.singlethread.518111.txt";
 
         Path pathNuovoWeblog = Paths.get(nomeNuovoFile);
 
@@ -41,29 +40,6 @@ public class MainClass
                     "-------------------------------------------------------" +
                     "-------------------------------------------------------");
         }
-
-        /* Lista di righe da passare ai thread workers */
-        LinkedBlockingQueue<String> lineeIn = new LinkedBlockingQueue<>();
-
-        /* Lista di righe convertite dai threads workers */
-        LinkedBlockingQueue<String> lineeOut = new LinkedBlockingQueue<>();
-
-        if(numThreads > 0)
-        {
-            ExecutorService execReaders =
-                    Executors.newFixedThreadPool(numThreads);
-            for(int i = 0; i < numThreads; i++)
-            {
-                execReaders.execute(new Task(lineeIn, lineeOut));
-            }
-            execReaders.shutdown();
-        }
-        else
-        {
-            System.out.println("0 threads disponibili nel threadpool");
-            return;
-        }
-
         /* Lista delle righe lette dal file in input*/
         List<String> allLines = null;
 
@@ -75,31 +51,8 @@ public class MainClass
             e.printStackTrace();
         }
 
-        /* Misuro il tempo per il confronto con la versione singlethread */
+        /* Misuro il tempo per il confronto con la versione multithread */
         long startTime = System.currentTimeMillis();
-
-        for(String s : allLines){
-            try
-            {
-                /* Passo le righe ai thread workers */
-                lineeIn.put(s);
-            }catch(InterruptedException e)
-            {
-                e.printStackTrace();
-            }
-        }
-
-        for(int i = 0; i < numThreads; i++)
-        {
-            try
-            {
-                /* Placeholder per terminare ciascun thread del threadpool */
-                lineeIn.put(System.lineSeparator()); /* di solito \n */
-            }catch(InterruptedException e)
-            {
-                e.printStackTrace();
-            }
-        }
 
         /* Se il file esiste già, allora rimuovilo */
         try
@@ -117,27 +70,32 @@ public class MainClass
             System.err.println(e);
         }
 
-        try
+        final String ipv4Pattern = "(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])";
+        Pattern pattern = Pattern.compile(ipv4Pattern);
+        for(String s : allLines)
         {
-            /* Itera un numero di volte pari al numero di linee del file
-               originale in input */
-            for(int i = 0; i < allLines.size(); i++)
+            Matcher matcher = pattern.matcher(s);
+            final String[] secondPart = s.split(ipv4Pattern);
+            InetAddress address = null;
+            try
             {
-                /* Estraggo le linee convertite dai thread del pool */
-                String linea = lineeOut.take();
-
-                /* Scrivo sul file pathNuovoWeblog */
-                Files.write(pathNuovoWeblog,
-                        (linea + System.lineSeparator()).getBytes("UTF-8"),
+                if (matcher.find())
+                {
+                    /* Risolvo l'indirizzo IP */
+                    /* matcher.group(0) è l'IP, secondPart[1] e il resto della riga */
+                    address = InetAddress.getByName(matcher.group(0));
+                    /* Scrivo sul file pathNuovoWeblog */
+                    Files.write(pathNuovoWeblog,
+                        (address.getHostName() + secondPart[1] +
+                        System.lineSeparator()).getBytes(StandardCharsets.UTF_8),
                         StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-
-                /* Stampo anche a schermo */
-                System.out.println(linea);
+                    /* Stampo anche a schermo */
+                    System.out.println(address.getHostName() + secondPart[1]);
+                }
+            }catch(IOException e)
+            {
+                e.printStackTrace();
             }
-        }
-        catch(InterruptedException | IOException e)
-        {
-            e.printStackTrace();
         }
         long stopTime = System.currentTimeMillis();
         long elapsedTime = stopTime - startTime;
@@ -147,7 +105,7 @@ public class MainClass
                 "-------------------------------------------------------");
         System.out.printf("The converted file will be available in the path : %s\n",
                 pathNuovoWeblog.toAbsolutePath());
-        System.out.printf("Tempo impiegato dal pool di thread : %d ms\n",
+        System.out.printf("Tempo impiegato dal main thread : %d ms\n",
                 elapsedTime);
     }
 }

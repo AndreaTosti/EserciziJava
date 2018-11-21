@@ -1,5 +1,5 @@
-
 package GestioneContiCorrentiJSON;
+
 class Contatore
 {
     private int kBonifico;

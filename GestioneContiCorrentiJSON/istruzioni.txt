@@ -3,7 +3,7 @@
 Per compilare (Windows)
 javac -cp ".;jackson-annotations-2.9.7.jar;jackson-core-2.9.7.jar;jackson-databind-2.9.7.jar" MainClass.java Contatore.java ContoCorrente.java Movimento.java Worker.java
 
-Per compilare (Unix)
+Per compilare (Linux)
 javac -cp ".:jackson-annotations-2.9.7.jar:jackson-core-2.9.7.jar:jackson-databind-2.9.7.jar" MainClass.java Contatore.java ContoCorrente.java Movimento.java Worker.java
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -11,7 +11,7 @@ javac -cp ".:jackson-annotations-2.9.7.jar:jackson-core-2.9.7.jar:jackson-databi
 Per eseguire (Windows)
 java -cp ".;jackson-annotations-2.9.7.jar;jackson-core-2.9.7.jar;jackson-databind-2.9.7.jar" MainClass 2 200
 
-Per eseguire (Unix)
+Per eseguire (Linux)
 java -cp ".:jackson-annotations-2.9.7.jar:jackson-core-2.9.7.jar:jackson-databind-2.9.7.jar" MainClass 2 200
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------

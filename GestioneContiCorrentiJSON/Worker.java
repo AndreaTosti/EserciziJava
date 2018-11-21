@@ -1,4 +1,5 @@
 package GestioneContiCorrentiJSON;
+
 import java.util.concurrent.LinkedBlockingQueue;
 
 class Worker implements Runnable
