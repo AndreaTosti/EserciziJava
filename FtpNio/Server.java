@@ -73,7 +73,7 @@ public class Server
             client.configureBlocking(false);
             SelectionKey key2 = client.register(selector, SelectionKey.OP_WRITE);
             ByteBuffer buffer = ByteBuffer.allocate(4);
-            buffer.putInt(100200);
+            buffer.putInt(0);
             buffer.flip();
             key2.attach(buffer);
           }
