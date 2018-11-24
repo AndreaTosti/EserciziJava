@@ -1,5 +1,3 @@
-package Weblog.Multithread_version;
-
 import java.io.*;
 import java.nio.file.*;
 import java.util.List;
@@ -108,7 +106,7 @@ public class MainClass
                 Files.delete(pathNuovoWeblog);
         } catch (NoSuchFileException e)
         {
-            System.err.format("%s: No such" + " file or directory%n", pathNuovoWeblog);
+            System.err.format("%s: No such" + " file or directory%n"    , pathNuovoWeblog);
         } catch (DirectoryNotEmptyException e)
         {
             System.err.format("%s Not empty%n", pathNuovoWeblog);

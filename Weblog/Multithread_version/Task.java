@@ -1,5 +1,3 @@
-package Weblog.Multithread_version;
-
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.net.InetAddress;

@@ -1,5 +1,3 @@
-package Weblog.Singlethread_version;
-
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
