@@ -4,43 +4,62 @@ import java.nio.*;
 import java.nio.channels.*;
 import java.net.*;
 import java.io.IOException;
+import java.nio.charset.Charset;
 
-public class Client {
+public class Client
+{
 
-  public static int DEFAULT_PORT = 51811;
+  private static int DEFAULT_PORT = 51811;
+  private  static String DEFAULT_HOST = "localhost";
 
-  public static void main(String[] args) {
-
-    if (args.length == 0) {
-      System.out.println("Usage: java IntgenClient host [port]");
+  public static void main(String[] args) throws InterruptedException
+  {
+    if(args.length != 1)
+    {
+      System.out.println("Usage: java Client host [port]");
       return;
     }
 
     int port;
-    try {
-      port = Integer.parseInt(args[1]);
-    } catch (RuntimeException ex) {
+    try
+    {
+      port = Integer.parseInt(args[0]);
+    }
+    catch(RuntimeException ex)
+    {
       port = DEFAULT_PORT;
     }
-    try {
-      SocketAddress address = new InetSocketAddress(args[0], port);
-      SocketChannel client  = SocketChannel.open(address);
-      ByteBuffer    buffer  = ByteBuffer.allocate(4);
-      IntBuffer     view    = buffer.asIntBuffer();
-
-      for (int expected = 0; ; expected++) {
-        client.read(buffer);
-        int actual = view.get();
-        buffer.clear();
-        view.rewind();
-
-        if (actual != expected) {
-          System.err.println("Expected " + expected + "; was " + actual);
-          break;
-        }
-        System.out.println(actual);
+    try
+    {
+      SocketAddress address = new InetSocketAddress(DEFAULT_HOST, port);
+      SocketChannel client;
+      try
+      {
+        client = SocketChannel.open(address);
       }
-    } catch(IOException ex) {
+      catch(ConnectException e)
+      {
+        System.out.println("Connessione rifiutata");
+        System.out.println("Uscita ...");
+        return;
+      }
+      String nomefile = "file.txt";
+      Charset charset = Charset.forName("UTF-8");
+      CharBuffer charBuffer = CharBuffer.wrap(nomefile);
+      ByteBuffer buffer = charset.encode(charBuffer);
+      buffer.compact();
+      buffer.flip();
+      int numWrittenBytes = client.write(buffer);
+      System.out.println(numWrittenBytes);
+      client.close();
+      /*ByteBuffer buffer  = ByteBuffer.allocate(1024);
+      client.read(buffer);
+      System.out.println("Arrivata la stringa");
+      buffer.flip();
+      CharBuffer c = Charset.forName("UTF-8").decode(buffer);
+      System.out.println(c);*/
+    }catch(IOException ex)
+    {
       ex.printStackTrace();
     }
   }

@@ -4,10 +4,12 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.Charset;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -72,24 +74,23 @@ public class Server
             System.out.println("Nuova connessione da parte dal client " + client);
             client.configureBlocking(false);
             SelectionKey key2 = client.register(selector, SelectionKey.OP_WRITE);
-            ByteBuffer buffer = ByteBuffer.allocate(4);
-            buffer.putInt(0);
+
+            /*String nomefile = "prova";
+            ByteBuffer buffer = ByteBuffer.wrap(nomefile.getBytes("UTF-8"));
             buffer.flip();
-            key2.attach(buffer);
+            key2.attach(buffer);*/
           }
           else if(key.isWritable())
           {
+            Charset charset = Charset.forName("UTF-8");
             SocketChannel client = (SocketChannel) key.channel();
-            ByteBuffer buffer = (ByteBuffer) key.attachment();
-            if(!buffer.hasRemaining())
-            {
-              buffer.rewind();
-              int value = buffer.getInt();
-              buffer.clear();
-              buffer.putInt(value + 1);
-              buffer.flip();
-            }
-            client.write(buffer);
+            System.out.println("Attendo il nome del file...");
+            ByteBuffer buffer = ByteBuffer.allocate(1024);
+            int numBytesRead = client.read(buffer);
+            client.close();
+            buffer.flip();
+            CharBuffer charBuffer = charset.decode(buffer);
+            System.out.println(charBuffer);
           }
         }
         catch(IOException e)
