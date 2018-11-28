@@ -10,6 +10,8 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.EnumSet;
 
+import static java.lang.System.exit;
+
 public class Client
 {
 
@@ -55,23 +57,25 @@ public class Client
       System.out.println("[CLIENT] Dimensione del file : " + numFileBytes);
       buffer.flip();
 
-      numBytesLetti = handleRead(client, "new" + sentFileName);
+      numBytesLetti = handleRead(client, numFileBytes, "new" + sentFileName);
       System.out.println("[CLIENT] Attesi: " + numFileBytes +
               " Ricevuti: " + numBytesLetti);
       byte[] numbytes = numBytesLetti.getBytes();
-      buffer.clear();
       buffer = ByteBuffer.wrap(numbytes);
-      buffer.flip();
+
+      //buffer.flip();
       System.out.println("[CLIENT] Invio la richiesta di terminazione");
       client.write(buffer);
-      client.close();
+      buffer.flip();
+      System.out.println(new String(buffer.array(), 0, res, StandardCharsets.UTF_8));
+      //client.close();
     }catch(IOException ex)
     {
       ex.printStackTrace();
     }
   }
 
-  private static String handleRead(SocketChannel channel, String sentFileName)
+  private static String handleRead(SocketChannel channel, int numFileBytes, String sentFileName)
   {
     ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
     Path path = Paths.get(sentFileName);
@@ -94,7 +98,9 @@ public class Client
           fileChannel.write(buffer);
           counter += res;
         }
-      }while(res >= 0);
+        numFileBytes -= res;
+        System.out.println(numFileBytes);
+      }while(numFileBytes > 0);
       fileChannel.close();
       System.out.println("[CLIENT] Letti " + counter + " bytes.");
     }

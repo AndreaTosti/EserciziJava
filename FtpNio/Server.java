@@ -75,14 +75,41 @@ public class Server
             ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
             client.register(selector, SelectionKey.OP_READ, buffer);
           }
-          if(key.isReadable())
+          else if(key.isReadable())
           {
             System.out.println("[SERVER-Selector] key.isReadable");
             SocketChannel channel = (SocketChannel)key.channel();
-            SelectionKey channelKey = channel.register(selector, SelectionKey.OP_WRITE, key.attachment());
-            receivedFileName = handleRead(key);
+            channel.register(selector, SelectionKey.OP_WRITE, key.attachment());
+
+            //Se il nome del file non è mai stato ricevuto..
+            if(receivedFileName == null)
+            {
+              receivedFileName = handleRead(key);
+            }
+            else
+            {
+              System.out.println("[SERVER] Controllo il numero di byte");
+              ByteBuffer buffer = ByteBuffer.allocate(10000);
+              int res;
+              buffer.clear();
+              res = channel.read(buffer);
+              System.out.println(res);
+              return;
+              //buffer.flip();
+              //System.out.println(new String(buffer.array(), 0, res, StandardCharsets.UTF_8));
+              /*if(numFileBytes > 0)
+              {
+                System.out.println("[SERVER] Richiesta di terminazione ricevuta");
+                key.cancel();
+                channel.close();
+              }
+              else
+              {
+                System.out.println("Errore.");
+              }*/
+            }
           }
-          if(key.isWritable())
+          else if(key.isWritable())
           {
             System.out.println("[SERVER-Selector] key.isWritable");
             SocketChannel channel = (SocketChannel) key.channel();
