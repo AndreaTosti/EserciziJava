@@ -46,9 +46,9 @@ public class Server
     {
       e.printStackTrace();
     }
+    String receivedFileName = null; //Nome del file ricevuto
     while(true)
     {
-      System.out.println("Nuova iterazione del select");
       try
       {
         assert selector != null;
@@ -58,8 +58,6 @@ public class Server
       {
         e.printStackTrace();
       }
-
-      String receivedFileName = null; //Nome del file ricevuto
       Set<SelectionKey> readyKeys = selector.selectedKeys();
       Iterator<SelectionKey> iterator = readyKeys.iterator();
       while(iterator.hasNext())
@@ -88,8 +86,11 @@ public class Server
           {
             System.out.println("[SERVER-Selector] key.isWritable");
             SocketChannel channel = (SocketChannel) key.channel();
-            handleWrite(key);
-            channel.close();
+            handleWrite(key, receivedFileName);
+            key.interestOps(SelectionKey.OP_READ);
+            //((ByteBuffer)key.attachment()).flip();
+            //channel.register(selector, SelectionKey.OP_READ, key.attachment());
+            //channel.close();
           }
         }
         catch(IOException e)
@@ -101,7 +102,7 @@ public class Server
           }
           catch(IOException ex)
           {
-
+            ex.printStackTrace();
           }
         }
       }
@@ -123,26 +124,6 @@ public class Server
         receivedFileName = new String(buffer.array(), 0, res, StandardCharsets.UTF_8);
         System.out.println("[SERVER] Nome del file ricevuto: " + receivedFileName);
         buffer.flip();
-
-        //Path currentRelativePath = Paths.get(receivedFileName);
-        //String s = currentRelativePath.toAbsolutePath().toString();
-
-        //Path path = Paths.get(receivedFileName);
-        //System.out.println(s);
-        //fileChannel = FileChannel.open(currentRelativePath.toAbsolutePath(), EnumSet.of(
-        //        StandardOpenOption.CREATE,
-        //        StandardOpenOption.TRUNCATE_EXISTING,
-        //        StandardOpenOption.WRITE));
-
-        //if(res > 0)
-        //{
-          //fileChannel.write(buffer);
-          //counter += res;
-        //}
-      //}while(res > 0);
-      //channel.close();
-      //fileChannel.close();
-      //System.out.println("SERVER: " + counter);
     }
     catch(IOException e)
     {
@@ -151,17 +132,24 @@ public class Server
     return receivedFileName;
   }
 
-  private static void handleWrite(SelectionKey key)
+  private static void handleWrite(SelectionKey key, String receivedFileName)
   {
-    //252 kb
     SocketChannel channel = (SocketChannel)key.channel();
     ByteBuffer buffer = (ByteBuffer) key.attachment();
-    String fname = "settings.jar";
-    Path path = Paths.get(fname);
+    Path path = Paths.get(receivedFileName);
     try
     {
       FileChannel fileChannel = FileChannel.open(path);
-      //ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
+
+      //Invio il numero di bytes del file
+      String numBytesStr = String.valueOf(fileChannel.size());
+      byte[] numBytes = numBytesStr.getBytes();
+      buffer.clear();
+      buffer =  ByteBuffer.wrap(numBytes);
+      //buffer.flip();
+      System.out.println(channel.write(buffer));
+      buffer.flip();
+
       int noOfBytesRead = 0;
       int counter = 0;
       do
@@ -178,7 +166,7 @@ public class Server
         buffer.clear();
       }while(true);
       fileChannel.close();
-      System.out.println("Inviati " + counter);
+      System.out.println("[SERVER] inviati " + counter + " bytes.");
     }
     catch(IOException e)
     {

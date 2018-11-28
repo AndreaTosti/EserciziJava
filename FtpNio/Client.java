@@ -4,6 +4,7 @@ import java.nio.*;
 import java.nio.channels.*;
 import java.net.*;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -13,8 +14,7 @@ public class Client
 {
 
   private static int DEFAULT_PORT = 51811;
-  private  static String DEFAULT_HOST = "localhost";
-
+  private static int BUFFER_SIZE = 2048;
   public static void main(String[] args) throws InterruptedException
   {
     int port;
@@ -30,6 +30,7 @@ public class Client
     {
       SocketAddress address = new InetSocketAddress(port);
       SocketChannel client;
+      String numBytesLetti = null;
       try
       {
         client = SocketChannel.open(address);
@@ -40,14 +41,29 @@ public class Client
         System.out.println("Uscita ...");
         return;
       }
-      String name = new String("settings.jar");
-      byte[] nomefile = name.getBytes();
+      String sentFileName = new String("settings.jar");
+      byte[] nomefile = sentFileName.getBytes();
       ByteBuffer buffer = ByteBuffer.wrap(nomefile);
+      System.out.println("[CLIENT] Invio del nomefile " + sentFileName);
       client.write(buffer);
-      System.out.println("Invio del nomefile " + name);
+
+      //Ricevo la dimensione del file
+      int res = 0;
       buffer.clear();
-      Thread.sleep(2000);
-      handleRead(client);
+      res = client.read(buffer);
+      int numFileBytes = Integer.valueOf(new String(buffer.array(), 0, res, StandardCharsets.UTF_8));
+      System.out.println("[CLIENT] Dimensione del file : " + numFileBytes);
+      buffer.flip();
+
+      numBytesLetti = handleRead(client, "new" + sentFileName);
+      System.out.println("[CLIENT] Attesi: " + numFileBytes +
+              " Ricevuti: " + numBytesLetti);
+      byte[] numbytes = numBytesLetti.getBytes();
+      buffer.clear();
+      buffer = ByteBuffer.wrap(numbytes);
+      buffer.flip();
+      System.out.println("[CLIENT] Invio la richiesta di terminazione");
+      client.write(buffer);
       client.close();
     }catch(IOException ex)
     {
@@ -55,31 +71,23 @@ public class Client
     }
   }
 
-  private static void handleRead(SocketChannel channel)
+  private static String handleRead(SocketChannel channel, String sentFileName)
   {
-    String outputfile = "SEEE.jar";
-    int bufferSize = 10240;
-    Path path = Paths.get(outputfile);
+    ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
+    Path path = Paths.get(sentFileName);
+    int counter = 0;
     try
     {
       FileChannel fileChannel = FileChannel.open(path, EnumSet.of(
               StandardOpenOption.CREATE,
               StandardOpenOption.TRUNCATE_EXISTING,
               StandardOpenOption.WRITE));
-      ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
       int res = 0;
-      int counter = 0;
       System.out.println("[CLIENT] Inizio lettura");
-      /*while((res = channel.read(buffer)) != -1)
-      {
-        Thread.sleep(200);
-      }
-    */
       do
       {
         buffer.clear();
         res = channel.read(buffer);
-        System.out.println(res);
         buffer.flip();
         if(res > 0)
         {
@@ -87,13 +95,13 @@ public class Client
           counter += res;
         }
       }while(res >= 0);
-      //channel.close();
       fileChannel.close();
-      System.out.println("CLIENT: " + counter);
+      System.out.println("[CLIENT] Letti " + counter + " bytes.");
     }
     catch(IOException e)
     {
       e.printStackTrace();
     }
+    return String.valueOf(counter);
   }
 }
