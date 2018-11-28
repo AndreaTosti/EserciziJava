@@ -53,7 +53,7 @@ public class Client
       int res = 0;
       buffer.clear();
       res = client.read(buffer);
-      int numFileBytes = Integer.valueOf(new String(buffer.array(), 0, res, StandardCharsets.UTF_8));
+      int numFileBytes = Integer.valueOf(new String(buffer.array(), 0, res, StandardCharsets.ISO_8859_1));
       System.out.println("[CLIENT] Dimensione del file : " + numFileBytes);
       buffer.flip();
 
@@ -63,12 +63,9 @@ public class Client
       byte[] numbytes = numBytesLetti.getBytes();
       buffer = ByteBuffer.wrap(numbytes);
 
-      //buffer.flip();
       System.out.println("[CLIENT] Invio la richiesta di terminazione");
       client.write(buffer);
-      buffer.flip();
-      System.out.println(new String(buffer.array(), 0, res, StandardCharsets.UTF_8));
-      //client.close();
+      client.close();
     }catch(IOException ex)
     {
       ex.printStackTrace();
