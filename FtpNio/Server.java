@@ -4,18 +4,19 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
-import java.nio.charset.Charset;
+import java.nio.channels.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.Set;
 
 public class Server
 {
   private static int DEFAULT_PORT = 51811;
+  private static int BUFFER_SIZE = 4096;
 
   public static void main(String[] args)
   {
@@ -29,9 +30,6 @@ public class Server
       port = DEFAULT_PORT;
     }
     System.out.println("Il server è ora in ascolto sulla porta " + port);
-
-    byte[] arrayDiByte = new byte[100];
-
     ServerSocketChannel serverChannel;
     Selector selector = null;
     try
@@ -50,6 +48,7 @@ public class Server
     }
     while(true)
     {
+      System.out.println("Nuova iterazione del select");
       try
       {
         assert selector != null;
@@ -59,6 +58,8 @@ public class Server
       {
         e.printStackTrace();
       }
+
+      String receivedFileName = null; //Nome del file ricevuto
       Set<SelectionKey> readyKeys = selector.selectedKeys();
       Iterator<SelectionKey> iterator = readyKeys.iterator();
       while(iterator.hasNext())
@@ -71,26 +72,24 @@ public class Server
           {
             ServerSocketChannel server = (ServerSocketChannel) key.channel();
             SocketChannel client = server.accept();
-            System.out.println("Nuova connessione da parte dal client " + client);
+            System.out.println("[SERVER] Nuova connessione da parte dal client " + client);
             client.configureBlocking(false);
-            SelectionKey key2 = client.register(selector, SelectionKey.OP_WRITE);
-
-            /*String nomefile = "prova";
-            ByteBuffer buffer = ByteBuffer.wrap(nomefile.getBytes("UTF-8"));
-            buffer.flip();
-            key2.attach(buffer);*/
+            ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
+            client.register(selector, SelectionKey.OP_READ, buffer);
           }
-          else if(key.isWritable())
+          if(key.isReadable())
           {
-            Charset charset = Charset.forName("UTF-8");
-            SocketChannel client = (SocketChannel) key.channel();
-            System.out.println("Attendo il nome del file...");
-            ByteBuffer buffer = ByteBuffer.allocate(1024);
-            int numBytesRead = client.read(buffer);
-            client.close();
-            buffer.flip();
-            CharBuffer charBuffer = charset.decode(buffer);
-            System.out.println(charBuffer);
+            System.out.println("[SERVER-Selector] key.isReadable");
+            SocketChannel channel = (SocketChannel)key.channel();
+            SelectionKey channelKey = channel.register(selector, SelectionKey.OP_WRITE, key.attachment());
+            receivedFileName = handleRead(key);
+          }
+          if(key.isWritable())
+          {
+            System.out.println("[SERVER-Selector] key.isWritable");
+            SocketChannel channel = (SocketChannel) key.channel();
+            handleWrite(key);
+            channel.close();
           }
         }
         catch(IOException e)
@@ -106,6 +105,84 @@ public class Server
           }
         }
       }
+    }
+  }
+
+  private static String handleRead(SelectionKey key)
+  {
+    SocketChannel channel = (SocketChannel)key.channel();
+    ByteBuffer buffer = (ByteBuffer) key.attachment();
+    String receivedFileName = null;
+    FileChannel fileChannel = null;
+    try
+    {
+
+      int res = 0;
+        buffer.clear();
+        res = channel.read(buffer);
+        receivedFileName = new String(buffer.array(), 0, res, StandardCharsets.UTF_8);
+        System.out.println("[SERVER] Nome del file ricevuto: " + receivedFileName);
+        buffer.flip();
+
+        //Path currentRelativePath = Paths.get(receivedFileName);
+        //String s = currentRelativePath.toAbsolutePath().toString();
+
+        //Path path = Paths.get(receivedFileName);
+        //System.out.println(s);
+        //fileChannel = FileChannel.open(currentRelativePath.toAbsolutePath(), EnumSet.of(
+        //        StandardOpenOption.CREATE,
+        //        StandardOpenOption.TRUNCATE_EXISTING,
+        //        StandardOpenOption.WRITE));
+
+        //if(res > 0)
+        //{
+          //fileChannel.write(buffer);
+          //counter += res;
+        //}
+      //}while(res > 0);
+      //channel.close();
+      //fileChannel.close();
+      //System.out.println("SERVER: " + counter);
+    }
+    catch(IOException e)
+    {
+      e.printStackTrace();
+    }
+    return receivedFileName;
+  }
+
+  private static void handleWrite(SelectionKey key)
+  {
+    //252 kb
+    SocketChannel channel = (SocketChannel)key.channel();
+    ByteBuffer buffer = (ByteBuffer) key.attachment();
+    String fname = "settings.jar";
+    Path path = Paths.get(fname);
+    try
+    {
+      FileChannel fileChannel = FileChannel.open(path);
+      //ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
+      int noOfBytesRead = 0;
+      int counter = 0;
+      do
+      {
+        noOfBytesRead = fileChannel.read(buffer);
+        if(noOfBytesRead <= 0)
+          break;
+        counter += noOfBytesRead;
+        buffer.flip();
+        do
+        {
+          noOfBytesRead -= channel.write(buffer);
+        }while(noOfBytesRead > 0);
+        buffer.clear();
+      }while(true);
+      fileChannel.close();
+      System.out.println("Inviati " + counter);
+    }
+    catch(IOException e)
+    {
+      e.printStackTrace();
     }
   }
 }
