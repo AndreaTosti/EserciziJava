@@ -51,11 +51,12 @@ public class Client
 
       //Ricevo la dimensione del file
       int res = 0;
+      ByteBuffer buffer2 = ByteBuffer.allocate(Long.BYTES);
       buffer.clear();
-      res = client.read(buffer);
-      int numFileBytes = Integer.valueOf(new String(buffer.array(), 0, res, StandardCharsets.ISO_8859_1));
+      res = client.read(buffer2);
+      int numFileBytes = Integer.valueOf(new String(buffer2.array(), 0, res, StandardCharsets.ISO_8859_1));
+      //long numFileBytes = buffer2.getLong();
       System.out.println("[CLIENT] Dimensione del file : " + numFileBytes);
-      buffer.flip();
 
       numBytesLetti = handleRead(client, numFileBytes, "new" + sentFileName);
       System.out.println("[CLIENT] Attesi: " + numFileBytes +
@@ -72,7 +73,7 @@ public class Client
     }
   }
 
-  private static String handleRead(SocketChannel channel, int numFileBytes, String sentFileName)
+  private static String handleRead(SocketChannel channel, long numFileBytes, String sentFileName)
   {
     ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
     Path path = Paths.get(sentFileName);

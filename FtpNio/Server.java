@@ -170,10 +170,14 @@ public class Server
       fileChannel = FileChannel.open(path);
       dimensioneFile = fileChannel.size();
       //Invio il numero di bytes del file
-      String numBytesStr = String.valueOf(dimensioneFile);
+      String numBytesStr = String.format("%0" + Long.BYTES + "d", dimensioneFile);
       byte[] numBytes = numBytesStr.getBytes();
       buffer.clear();
       buffer =  ByteBuffer.wrap(numBytes);
+      //buffer.flip();
+
+
+      //buffer.putLong(dimensioneFile);
       //buffer.flip();
       System.out.println(channel.write(buffer));
       buffer.flip();
