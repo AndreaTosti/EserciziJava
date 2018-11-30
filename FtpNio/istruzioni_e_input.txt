@@ -1,0 +1,24 @@
+Il server è in grado di leggere le richieste da più client, una richiesta di file per volta.
+Il server è stato testato su localhost.
+
+- Server si mette in ascolto sulla porta 51811 oppure su una porta diversa se specificato:
+
+  java Server [numPorta]
+  Esempio: java Server
+
+- Client si connette al server alla porta 51811 oppure su una porta diversa se specificato:
+
+  java Client nomeFile [numPorta]
+  Esempio: java Client istruzioni_e_input.txt
+
+Dopodiché, il client manda il nome del file, il server lo riceve, vede se il file
+esiste nella Current Working Directory:
+
+- se il file non esiste manda -1 e chiude la comunicazione, il client vede -1 e termina
+- se il file esiste manda il numero di bytes del file, il client si prepara a
+  ricevere i bytes del file NomeFile scrivendoli su un file newNomeFile nella
+  Current Working Directory;
+  il server manda i bytes del file sul socket, il client li legge, dopodiché il
+  client manda il numero di bytes letti al server e termina, il server controlla
+  che il numero di bytes del file corrisponda esattamente al numero dei bytes
+  letti dal client, dopodiché si rimette in ascolto di un nuovo client

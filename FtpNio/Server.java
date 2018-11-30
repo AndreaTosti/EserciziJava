@@ -186,7 +186,8 @@ public class Server
       if(Files.notExists(path))
       {
         System.out.println("[SERVER] Filename " + receivedFileName +
-                " does not exists, sending error to client");
+                " does not exists in the current working directory: " +
+                System.getProperty("user.dir") + ", sending error to client");
         //Invio l'errore riempiendo di zeri (Padding) oltre a -1
         String numBytesStr = String.format("%0" + Long.BYTES + "d", -1);
         byte[] numBytes = numBytesStr.getBytes();

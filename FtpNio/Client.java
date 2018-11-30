@@ -71,7 +71,7 @@ public class Client
       if(numFileBytes == -1)
       {
         System.out.println("[CLIENT] Received error (file " + sentFileName +
-                " does not exists, errno: " + numFileBytes);
+                " does not exists, errno: " + numFileBytes + ")");
         System.out.println("[CLIENT] Closing ...");
         client.close();
         return;
