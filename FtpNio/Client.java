@@ -67,8 +67,17 @@ public class Client
       res = client.read(buffer2);
       int numFileBytes = Integer.valueOf(new String(buffer2.array(), 0, res, StandardCharsets.ISO_8859_1));
       System.out.println("[CLIENT] Received " + res + " bytes.");
-      System.out.println("[CLIENT] Received filesize: " + numFileBytes + " bytes");
+      //Se il file esiste, ritorna il numero di bytes del file, altrimenti -1
+      if(numFileBytes == -1)
+      {
+        System.out.println("[CLIENT] Received error (file " + sentFileName +
+                " does not exists, errno: " + numFileBytes);
+        System.out.println("[CLIENT] Closing ...");
+        client.close();
+        return;
+      }
 
+      System.out.println("[CLIENT] Received filesize: " + numFileBytes + " bytes");
       buffer.clear();
       //Creo un nuovo file nella directory corrente con nome newNOMEFILE
       numBytesLetti = handleRead(client, numFileBytes, "new" + sentFileName);

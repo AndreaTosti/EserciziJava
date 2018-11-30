@@ -6,6 +6,7 @@ import java.net.ServerSocket;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Iterator;
@@ -109,8 +110,9 @@ public class Server
               int messaggio = Integer.valueOf(new String(buffer.array(), 0, res, StandardCharsets.ISO_8859_1));
               if(messaggio - fileSize == 0)
               {
-                System.out.println("File sent correctly (Sent: " + messaggio +
-                        "/" + fileSize + " bytes), waiting for new client requests");
+                System.out.println("[SERVER] File sent correctly (Sent: " + messaggio +
+                        "/" + fileSize + " bytes)");
+                System.out.println("[SERVER] Waiting for new client requests...");
                 System.out.println();
                 channel.close();
                 receivedFileName = null;
@@ -128,7 +130,10 @@ public class Server
             System.out.println("[SERVER-Selector] key.isWritable");
             SocketChannel channel = (SocketChannel) key.channel();
             fileSize = handleWrite(key, receivedFileName);
-            key.interestOps(SelectionKey.OP_READ);
+            if(key.isValid())
+              key.interestOps(SelectionKey.OP_READ);
+            else
+              receivedFileName = null;
           }
         }
         catch(IOException e)
@@ -178,6 +183,22 @@ public class Server
     Path path = Paths.get(receivedFileName);
     try
     {
+      if(Files.notExists(path))
+      {
+        System.out.println("[SERVER] Filename " + receivedFileName +
+                " does not exists, sending error to client");
+        //Invio l'errore riempiendo di zeri (Padding) oltre a -1
+        String numBytesStr = String.format("%0" + Long.BYTES + "d", -1);
+        byte[] numBytes = numBytesStr.getBytes();
+        buffer.clear();
+        buffer =  ByteBuffer.wrap(numBytes);
+        int sentBytes = channel.write(buffer);
+        System.out.println("[SERVER] Sent " + sentBytes + " bytes.");
+        channel.close();
+        System.out.println("[SERVER] Waiting for new client requests...");
+        System.out.println();
+        return -1;
+      }
       fileChannel = FileChannel.open(path);
       dimensioneFile = fileChannel.size();
       System.out.println("[SERVER] Reading from file " + path.toAbsolutePath());
