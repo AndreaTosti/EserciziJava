@@ -8,28 +8,35 @@ import java.nio.channels.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.Set;
 
 public class Server
 {
-  private static int DEFAULT_PORT = 51811;
-  private static int BUFFER_SIZE = 4096;
+  private static int DEFAULT_PORT = 51811; //Porta
+  private static int BUFFER_SIZE  = 4096;   //Dimensione del buffer
 
   public static void main(String[] args)
   {
     int port;
-    try
+    if(args.length == 0)
     {
-      port = Integer.parseInt(args[0]);
-    }
-    catch(RuntimeException e)
-    {
+      //Non ho passato il numero di porta
       port = DEFAULT_PORT;
+      System.out.println("[SERVER] No arguments specified, using default " +
+              "port number " + DEFAULT_PORT);
     }
-    System.out.println("Il server è ora in ascolto sulla porta " + port);
+    else if(args.length == 1)
+    {
+      //Ho passato il numero di porta
+      port = Integer.parseInt(args[0]);
+      System.out.println("[SERVER] Listening to chosen port number " + port);
+    }
+    else
+    {
+      System.err.print("[SERVER] Only one argument accepted : port number");
+      return;
+    }
     ServerSocketChannel serverChannel;
     Selector selector = null;
     try
@@ -47,7 +54,7 @@ public class Server
       e.printStackTrace();
     }
     String receivedFileName = null; //Nome del file ricevuto
-    long fileSize = 0; //Dimensione del file spedito
+    long fileSize = 0;              //Dimensione del file richiesto
     while(true)
     {
       try
@@ -69,27 +76,32 @@ public class Server
         {
           if(key.isAcceptable())
           {
+            //Nuova richiesta di connessione
+            System.out.println("[SERVER-Selector] key.isAcceptable");
             ServerSocketChannel server = (ServerSocketChannel) key.channel();
             SocketChannel client = server.accept();
-            System.out.println("[SERVER] Nuova connessione da parte dal client " + client);
+            System.out.println("[SERVER] New connection from client " + client);
             client.configureBlocking(false);
             ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
             client.register(selector, SelectionKey.OP_READ, buffer);
           }
           else if(key.isReadable())
           {
+            //Nuovo evento in lettura
             System.out.println("[SERVER-Selector] key.isReadable");
             SocketChannel channel = (SocketChannel)key.channel();
             channel.register(selector, SelectionKey.OP_WRITE, key.attachment());
 
-            //Se il nome del file non è mai stato ricevuto..
+            //Se il nome del file non è mai stato ricevuto, allora leggilo,
+            //altrimenti controlla che il numero di bytes letti dal client
+            //sia effettivamente uguale alla dimensione in bytes del file spedito
+
             if(receivedFileName == null)
             {
               receivedFileName = handleRead(key);
             }
             else
             {
-              System.out.println("[SERVER] Controllo il numero di byte");
               ByteBuffer buffer = (ByteBuffer) key.attachment();
               int res;
               buffer.clear();
@@ -97,26 +109,26 @@ public class Server
               int messaggio = Integer.valueOf(new String(buffer.array(), 0, res, StandardCharsets.ISO_8859_1));
               if(messaggio - fileSize == 0)
               {
-                System.out.println("Il file è stato spedito correttamente, attendo nuovi client...");
+                System.out.println("File sent correctly (Sent: " + messaggio +
+                        "/" + fileSize + " bytes), waiting for new client requests");
+                System.out.println();
                 channel.close();
                 receivedFileName = null;
               }
               else
               {
-                System.out.println("Errore nel trasferimento del file:");
-                System.out.println("Spediti " + messaggio + "/" + fileSize + "bytes");
+                System.out.println("[SERVER] Error during file transmission:");
+                System.out.println("Sent: " + messaggio + "/" + fileSize + " bytes");
               }
             }
           }
           else if(key.isWritable())
           {
+            //Nuovo evento in scrittura
             System.out.println("[SERVER-Selector] key.isWritable");
             SocketChannel channel = (SocketChannel) key.channel();
             fileSize = handleWrite(key, receivedFileName);
             key.interestOps(SelectionKey.OP_READ);
-            //((ByteBuffer)key.attachment()).flip();
-            //channel.register(selector, SelectionKey.OP_READ, key.attachment());
-            //channel.close();
           }
         }
         catch(IOException e)
@@ -143,13 +155,12 @@ public class Server
     FileChannel fileChannel = null;
     try
     {
-
       int res = 0;
-        buffer.clear();
-        res = channel.read(buffer);
-        receivedFileName = new String(buffer.array(), 0, res, StandardCharsets.ISO_8859_1);
-        System.out.println("[SERVER] Nome del file ricevuto: " + receivedFileName);
-        buffer.flip();
+      buffer.clear();
+      res = channel.read(buffer);
+      receivedFileName = new String(buffer.array(), 0, res, StandardCharsets.ISO_8859_1);
+      System.out.println("[SERVER] Received file name: " + receivedFileName);
+      buffer.flip();
     }
     catch(IOException e)
     {
@@ -169,19 +180,15 @@ public class Server
     {
       fileChannel = FileChannel.open(path);
       dimensioneFile = fileChannel.size();
-      //Invio il numero di bytes del file
+      System.out.println("[SERVER] Reading from file " + path.toAbsolutePath());
+      //Invio il numero di bytes del file riempiendo di zeri (Padding)
       String numBytesStr = String.format("%0" + Long.BYTES + "d", dimensioneFile);
       byte[] numBytes = numBytesStr.getBytes();
       buffer.clear();
       buffer =  ByteBuffer.wrap(numBytes);
-      //buffer.flip();
-
-
-      //buffer.putLong(dimensioneFile);
-      //buffer.flip();
-      System.out.println(channel.write(buffer));
+      int sentBytes = channel.write(buffer);
+      System.out.println("[SERVER] Sent " + sentBytes + " bytes.");
       buffer.flip();
-
       int noOfBytesRead = 0;
       int counter = 0;
       do
@@ -198,7 +205,7 @@ public class Server
         buffer.clear();
       }while(true);
       fileChannel.close();
-      System.out.println("[SERVER] inviati " + counter + " bytes.");
+      System.out.println("[SERVER] Sent " + counter + " bytes.");
     }
     catch(IOException e)
     {
