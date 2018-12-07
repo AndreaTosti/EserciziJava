@@ -1,7 +1,6 @@
 package UDPPing;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.*;
 
 public class Client
@@ -57,6 +56,15 @@ public class Client
       SocketAddress serverSocket = new InetSocketAddress(HOST, port);
       DatagramSocket clientSocket = new DatagramSocket();
 
+      int packetsTransmitted = 0;
+      int packetsLost = 0;
+      int packetsReceived = 0;
+      int packetsLossPerc = 0;
+      long sumRTT = 0;
+      long minRTT = 2000;
+      long maxRTT = 0;
+      long avgRTT = 0;
+
       for(int i = 0; i < 10; i++)
       {
         Long savedTime = System.currentTimeMillis();
@@ -65,6 +73,7 @@ public class Client
         DatagramPacket packetToSend = new DatagramPacket(buffer, buffer.length, serverSocket);
         clientSocket.setSoTimeout(2000);
         clientSocket.send(packetToSend);
+        packetsTransmitted++;
         DatagramPacket packetToReceive = new DatagramPacket(buffer, buffer.length, serverSocket);
         long rtt = -1;
         String stringReceived = null;
@@ -76,15 +85,34 @@ public class Client
                   packetToReceive.getLength(), "US-ASCII");
           //System.out.println("[CLIENT] Received " + packetToReceive.getLength() + " bytes ");
           System.out.println(stringReceived + " RTT: " + rtt + " ms");
+          packetsReceived++;
+          minRTT = Math.min(rtt, minRTT);
+          maxRTT = Math.max(rtt, maxRTT);
+          sumRTT += rtt;
         }
         catch(SocketTimeoutException e)
         {
           //System.out.println("[CLIENT] Timed out");
           System.out.println(stringa + " RTT: *");
+          packetsLost++;
         }
       }
+      packetsLossPerc = (packetsLost * 100)/(packetsReceived + packetsLost);
+      if(packetsReceived == 0)
+      {
+        avgRTT = 0;
+      }
+      else
+      {
+        avgRTT = sumRTT/packetsReceived;
+      }
 
-
+      System.out.println("---- PING Statistics ----");
+      System.out.println(packetsTransmitted + " packets transmitted, " +
+              packetsReceived + " packets received, " +
+              packetsLossPerc + "% packet loss ");
+      System.out.println("round-trip (ms) min/avg/max = " +
+              minRTT + "/" + avgRTT + "/" + maxRTT);
     }
     catch(SocketException e1)
     {

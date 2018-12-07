@@ -3,7 +3,6 @@ package UDPPing;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.SocketException;
 import java.security.SecureRandom;
 
 public class Server
@@ -34,7 +33,7 @@ public class Server
       return;
     }
 
-    double lossProbability = 0.5; //da 0 a 1, 0.25 = 25%
+    double lossProbability = 0.25; //da 0 a 1, 0.25 = 25%
     double lossIndex = 0;
 
     try
