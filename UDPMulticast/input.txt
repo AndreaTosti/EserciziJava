@@ -1,0 +1,9 @@
+Per il server:
+java TimeServer multicast_address port
+
+Per il client:
+java TimeClient multicast_address port
+
+Ad esempio:
+java TimeServer 239.1.10.1 51811
+java TimeClient 239.1.10.1 51811
