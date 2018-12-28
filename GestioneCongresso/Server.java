@@ -1,25 +1,44 @@
+package GestioneCongresso;
+
 import java.rmi.registry.Registry;
 import java.rmi.registry.LocateRegistry;
-import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 
-public class Server extends ImplExample {
-  public Server() {}
-  public static void main(String args[]) {
-    try {
+public class Server
+{
+  public Server()
+  {
+
+  }
+
+  public static void main(String args[])
+  {
+    int DEFAULT_PORT = 3000; //Porta
+    int DEFAULT_NUMGIORNATE = 3;
+    int DEFAULT_NUMSESSIONIPERGIORNO = 12;
+    int DEFAULT_NUMMAXSPEAKERPERSESSIONE = 5;
+
+    try
+    {
       // Instantiating the implementation class
-      ImplExample obj = new ImplExample();
+      ImplCongresso obj = new ImplCongresso(
+              DEFAULT_NUMGIORNATE,
+              DEFAULT_NUMSESSIONIPERGIORNO,
+              DEFAULT_NUMMAXSPEAKERPERSESSIONE);
 
       // Exporting the object of implementation class
       // (here we are exporting the remote object to the stub)
-      Hello stub = (Hello) UnicastRemoteObject.exportObject(obj, 0);
+      Congresso stub = (Congresso) UnicastRemoteObject.exportObject(obj, 0);
 
       // Binding the remote object (stub) in the registry
-      Registry registry = LocateRegistry.getRegistry();
+      Registry registry = LocateRegistry.createRegistry(DEFAULT_PORT);
+      //Registry registry = LocateRegistry.getRegistry();
 
-      registry.bind("Hello", stub);
+      registry.bind("Congresso", stub);
       System.err.println("Server ready");
-    } catch (Exception e) {
+    }
+    catch(Exception e)
+    {
       System.err.println("Server exception: " + e.toString());
       e.printStackTrace();
     }
