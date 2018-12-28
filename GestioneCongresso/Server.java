@@ -1,5 +1,3 @@
-package GestioneCongresso;
-
 import java.rmi.registry.Registry;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
@@ -13,7 +11,7 @@ public class Server
 
   public static void main(String args[])
   {
-    int DEFAULT_PORT = 3000; //Porta
+    int DEFAULT_PORT = 51811; //Porta
     int DEFAULT_NUMGIORNATE = 3;
     int DEFAULT_NUMSESSIONIPERGIORNO = 12;
     int DEFAULT_NUMMAXSPEAKERPERSESSIONE = 5;
