@@ -1,0 +1,38 @@
+Note:
+
+Il client e il server utilizzano la porta 51811 di default
+Il test è stato effettuato in localhost e non sono stati
+considerati possibili problemi di concorrenza sulla struttura dati
+che mantiene i vari interventi degli speaker.
+
+Test:
+
+Eseguire i seguenti comandi:
+
+javac Client.java Congresso.java ImplCongresso.java Server.java Speaker.java
+
+java Server &
+java Client
+
+Verranno a questo punto visualizzati i vari comandi eseguibili da parte del client:
+[CLIENT] Digitare uno dei seguenti comandi (case insensitive)
+[CLIENT] considerando questi vincoli:
+[CLIENT] Sessioni disponibili: da 1 a 12
+[CLIENT] Giorni disponibili: da 1 a 3
+[CLIENT] Lunghezza nome dello speaker: MAX 17 caratteri
+[CLIENT] --- Comandi ---
+[CLIENT] stop : termina il processo client
+[CLIENT] register X Y Z : registra lo speaker X alla sessione Y nel giorno Z
+[CLIENT] program : restituisce il programma del congresso
+
+Ad esempio è possibile eseguire, in successione:
+
+register A 2 3
+register B 2 3
+register C 2 3
+register D 2 3
+register E 2 3
+program
+stop
+
+
