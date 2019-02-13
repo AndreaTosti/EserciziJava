@@ -6,6 +6,7 @@
       <sourceFolder url="file://$MODULE_DIR$" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/CalcoloPI" />
       <excludeFolder url="file://$MODULE_DIR$/FtpNio" />
+      <excludeFolder url="file://$MODULE_DIR$/GestioneCongresso" />
       <excludeFolder url="file://$MODULE_DIR$/GestioneContiCorrenti" />
       <excludeFolder url="file://$MODULE_DIR$/GestioneContiCorrentiJSON" />
       <excludeFolder url="file://$MODULE_DIR$/GestioneLaboratorio" />
