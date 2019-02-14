@@ -43,7 +43,7 @@ public class Server
     System.err.println("[Server-Error] " + string);
   }
 
-  private static void handleLogin(String[] splitted, SocketChannel channel)
+  private static Op handleLogin(String[] splitted, SocketChannel channel)
   {
     String nickname = splitted[1];
     String password = splitted[2];
@@ -62,10 +62,12 @@ public class Server
           sessione.setUtente(utente);
           sessione.setStato(Sessione.Stato.Logged);
           println("Sessione utente va in Logged");
+          return Op.SuccessfullyLogged;
         }
         else
         {
           printErr("Sessione inesistente");
+          return Op.Error;
         }
       }
       else
@@ -73,12 +75,35 @@ public class Server
         //Password non corretta
         printErr("Password " + password + " non corrisponde a " +
                 utente.getPassword());
+        return Op.WrongPassword;
       }
     }
     else
     {
       //L'utente non esiste
       printErr("L'utente " + nickname + " non esiste");
+      return Op.NicknameDoesNotExists;
+    }
+  }
+
+  private static void handleLogout(SocketChannel channel)
+  {
+    try
+    {
+      if(sessions.remove(channel) == null)
+      {
+        printErr("Sessione inesistente");
+      }
+      else
+      {
+        println("Sessione rimossa con successo per il client " +
+                channel.getRemoteAddress());
+      }
+      channel.close();
+    }
+    catch(IOException e)
+    {
+      e.printStackTrace();
     }
   }
 
@@ -190,17 +215,8 @@ public class Server
             res = channel.read(buffer);
             if(res < 0)
             {
-              //TODO: Il client si è disconnesso
-              if(sessions.remove(channel) == null)
-              {
-                printErr("Sessione inesistente");
-              }
-              else
-              {
-                println("Sessione rimossa con successo per il client " +
-                        channel.getRemoteAddress());
-              }
-              channel.close();
+              //Il client si è disconnesso
+              handleLogout(channel);
             }
             else
             {
@@ -214,16 +230,36 @@ public class Server
               switch(requestedOperation)
               {
                 case Login :
-                  handleLogin(splitted, channel);
+                  Op result = handleLogin(splitted, channel);
+                  //TODO: Metti il risultato nel buffer
+                  buffer.flip();
+
+                  //FIXME: il Wrapper ridimensiona il buffer
+                  buffer = ByteBuffer.wrap(result.toString().getBytes());
+
+                  channel.register(selector, SelectionKey.OP_WRITE, buffer);
                   break;
                 case Logout :
-                  println("logout");
+                  handleLogout(channel);
                   break;
                 default :
                   println("nessuna delle precedenti");
                   break;
               }
             }
+          }
+          if(key.isValid() && key.isWritable())
+          {
+            //Nuovo evento in scrittura
+            println("key.isWritable ");
+            SocketChannel channel = (SocketChannel)key.channel();
+            ByteBuffer buffer = (ByteBuffer) key.attachment();
+            System.out.println(buffer.capacity());
+            buffer.clear();
+            System.out.println((channel.write(buffer)));
+
+            channel.register(selector, SelectionKey.OP_READ, buffer);
+
           }
         }
         catch(IOException e)

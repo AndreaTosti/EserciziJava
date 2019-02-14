@@ -4,6 +4,9 @@ public enum Op
 {
   Register,
   SuccessfullyRegistered,
+  SuccessfullyLogged,
+  WrongPassword,
+  NicknameDoesNotExists,
   Login,
   Logout,
   Success,

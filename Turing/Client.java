@@ -8,6 +8,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.StringJoiner;
@@ -107,6 +108,27 @@ public class Client
     try
     {
       client.write(buffer);
+
+      //TODO: da migliorare buffer e dimensione
+      buffer = ByteBuffer.allocate(4096);
+
+      //Leggi l'esito
+      int res;
+//      buffer.flip();
+      res = client.read(buffer);
+      //TODO: gestire entrambi i casi
+      if(res < 0)
+      {
+        //Il server è stato chiuso?
+        printErr("Res < 0");
+      }
+      else
+      {
+        buffer.flip();
+        String result = new String(buffer.array(), 0,
+                res, StandardCharsets.ISO_8859_1);
+        println("RESPONSE: " + result);
+      }
     }
     catch(IOException e)
     {
