@@ -11,7 +11,6 @@ import java.nio.channels.SocketChannel;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.StringJoiner;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Client
@@ -63,7 +62,15 @@ public class Client
     {
       Registry registry = LocateRegistry.getRegistry(DEFAULT_HOST, DEFAULT_RMI_PORT);
       RegUtenteInterface stub = (RegUtenteInterface) registry.lookup("RegUtente");
-      stub.registerUser(username, password);
+      Op result = stub.registerUser(username, password);
+      if(result == Op.SuccessfullyRegistered)
+      {
+        println("Registrazione eseguita con successo");
+      }
+      else if(result == Op.Error)
+      {
+        printErr("Registrazione non andata a buon fine");
+      }
     }
     catch(Exception e)
     {
@@ -72,9 +79,40 @@ public class Client
     }
   }
 
-  private static void handleLogin(String[] splitted)
+  private static void handleLogin(String[] splitted, SocketChannel client)
   {
-    println("LOGIN!");
+    //Controllo il numero di parametri
+    if(splitted.length != 3)
+    {
+      printErr("Usage: login <username> <password>");
+      return;
+    }
+
+    String username = splitted[1];
+    String password = splitted[2];
+
+    println("LOGGING User " + username + " with password " +
+            password);
+
+    //LOGIN TCP
+    //login#username#password
+
+    StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
+    joiner.add(Op.Login.toString()).add(username).add(password);
+    String joinedString = joiner.toString();
+
+    byte[] operation = joinedString.getBytes();
+    ByteBuffer buffer = ByteBuffer.wrap(operation);
+
+    try
+    {
+      client.write(buffer);
+    }
+    catch(IOException e)
+    {
+      e.printStackTrace();
+    }
+
   }
 
   private static void handleLogout()
@@ -120,7 +158,7 @@ public class Client
             handleRegister(splitted);
             break;
           case "login" :
-            handleLogin(splitted);
+            handleLogin(splitted, client);
             break;
           case "logout" :
             handleLogout();
@@ -137,17 +175,6 @@ public class Client
     {
       e.printStackTrace();
     }
-
-
-//      StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
-//      joiner.add(Op.Login.toString()).add("Andrea").add("Tosti");
-//      String joinedString = joiner.toString();
-//
-//      byte[] operation = joinedString.getBytes();
-//      ByteBuffer buffer = ByteBuffer.wrap(operation);
-//      println("Sending Operation " + Op.Login.toString());
-//      client.write(buffer);
-//    }
 
   }
 

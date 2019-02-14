@@ -13,8 +13,12 @@ import java.rmi.registry.Registry;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class Server
 {
@@ -22,6 +26,12 @@ public class Server
   private static int DEFAULT_RMI_PORT = 51812; //Porta RMI
   private static int BUFFER_SIZE  = 4096; //Dimensione del buffer
   private static String DEFAULT_DELIMITER = "#";
+
+  //Utenti
+  private static final ConcurrentMap<String, Utente> users = new ConcurrentHashMap<>();
+
+  //Sessione utente
+  private static final Map<SocketChannel, Sessione> sessions = new HashMap<>();
 
   private static void println(String string)
   {
@@ -31,6 +41,45 @@ public class Server
   private static void printErr(String string)
   {
     System.err.println("[Server-Error] " + string);
+  }
+
+  private static void handleLogin(String[] splitted, SocketChannel channel)
+  {
+    String nickname = splitted[1];
+    String password = splitted[2];
+
+    //TODO: Restituire un messaggio TCP al client
+    Utente utente = users.get(nickname);
+
+    if(utente != null)
+    {
+      if(utente.getPassword().compareTo(password) == 0)
+      {
+        //La password è corretta
+        Sessione sessione = sessions.get(channel);
+        if(sessione != null)
+        {
+          sessione.setUtente(utente);
+          sessione.setStato(Sessione.Stato.Logged);
+          println("Sessione utente va in Logged");
+        }
+        else
+        {
+          printErr("Sessione inesistente");
+        }
+      }
+      else
+      {
+        //Password non corretta
+        printErr("Password " + password + " non corrisponde a " +
+                utente.getPassword());
+      }
+    }
+    else
+    {
+      //L'utente non esiste
+      printErr("L'utente " + nickname + " non esiste");
+    }
   }
 
   //Metodo costruttore
@@ -61,7 +110,7 @@ public class Server
     try
     {
       //Registrazione RMI
-      RegUtenteImplementation object = new RegUtenteImplementation();
+      RegUtenteImplementation object = new RegUtenteImplementation(users);
       RegUtenteInterface stub = (RegUtenteInterface) UnicastRemoteObject.exportObject(object, 0);
       Registry registry = LocateRegistry.createRegistry(DEFAULT_RMI_PORT);
       registry.bind("RegUtente", stub);
@@ -121,36 +170,65 @@ public class Server
             println("key.isAcceptable");
             ServerSocketChannel server = (ServerSocketChannel) key.channel();
             SocketChannel client = server.accept();
-            println("New connection from client " +
-                    client.getRemoteAddress());
+            println("New connection from client " + client.getRemoteAddress());
             client.configureBlocking(false);
             ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
             client.register(selector, SelectionKey.OP_READ, buffer);
+
+            //Crea una nuova sessione per il client
+            sessions.put(client, new Sessione());
+
           }
           if(key.isValid() && key.isReadable())
           {
             //Nuovo evento in lettura
-            println("key.isReadable");
+            println("key.isReadable ");
             SocketChannel channel = (SocketChannel)key.channel();
-            channel.register(selector, SelectionKey.OP_WRITE, key.attachment());
-
             ByteBuffer buffer = (ByteBuffer) key.attachment();
             int res;
             buffer.clear();
             res = channel.read(buffer);
-            buffer.flip();
-
-            //TODO: Se res < 0, qualcosa è andato storto
-            String toSplit = new String(buffer.array(), 0, res, StandardCharsets.ISO_8859_1);
-            String[] tokens = toSplit.split(DEFAULT_DELIMITER);
-
-            Op operation = Op.valueOf(tokens[0]);
-            println(toSplit);
-
+            if(res < 0)
+            {
+              //TODO: Il client si è disconnesso
+              if(sessions.remove(channel) == null)
+              {
+                printErr("Sessione inesistente");
+              }
+              else
+              {
+                println("Sessione rimossa con successo per il client " +
+                        channel.getRemoteAddress());
+              }
+              channel.close();
+            }
+            else
+            {
+              buffer.flip();
+              String toSplit = new String(buffer.array(), 0, res, StandardCharsets.ISO_8859_1);
+              String[] splitted = toSplit.split(DEFAULT_DELIMITER);
+              Op requestedOperation = Op.valueOf(splitted[0]);
+              println("Requested Operation : " + requestedOperation.toString() +
+                      " from Client IP : " + channel.socket().getInetAddress().getHostAddress() +
+                      " port : " + channel.socket().getPort());
+              switch(requestedOperation)
+              {
+                case Login :
+                  handleLogin(splitted, channel);
+                  break;
+                case Logout :
+                  println("logout");
+                  break;
+                default :
+                  println("nessuna delle precedenti");
+                  break;
+              }
+            }
           }
         }
         catch(IOException e)
         {
+          printErr("Exception");
           key.cancel();
           try
           {
