@@ -6,6 +6,6 @@ import java.rmi.RemoteException;
 public interface RegUtenteInterface extends Remote
 {
   //Registra un nuovo utente
-  public void registerUser() throws RemoteException;
+  public void registerUser(String username, String password) throws RemoteException;
 
 }

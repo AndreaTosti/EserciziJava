@@ -23,6 +23,16 @@ public class Server
   private static int BUFFER_SIZE  = 4096; //Dimensione del buffer
   private static String DEFAULT_DELIMITER = "#";
 
+  private static void println(String string)
+  {
+    System.out.println("[Server] " + string);
+  }
+
+  private static void printErr(String string)
+  {
+    System.err.println("[Server-Error] " + string);
+  }
+
   //Metodo costruttore
   public static void main(String[] args)
   {
@@ -33,18 +43,18 @@ public class Server
     {
       //Non ho passato il numero di porta
       serverPort = DEFAULT_PORT;
-      System.out.println("[Server] No arguments specified, using default " +
+      println("No arguments specified, using default " +
               "port number " + DEFAULT_PORT);
     }
     else if(args.length == 1)
     {
       //Ho passato il numero di porta
       serverPort = Integer.parseInt(args[0]);
-      System.out.println("[Server] Listening to chosen port number " + serverPort);
+      println("Listening to chosen port number " + serverPort);
     }
     else
     {
-      System.err.print("[Server] Only one argument accepted : port number");
+      printErr("Only one argument accepted : port number");
       return;
     }
 
@@ -58,12 +68,12 @@ public class Server
     }
     catch(ExportException e1)
     {
-      System.err.println("[Server] " + e1.toString());
+      printErr(e1.toString());
       System.exit(1);
     }
     catch(Exception e2)
     {
-      System.err.println("[Server] exception: " + e2.toString());
+      printErr("exception: " + e2.toString());
       e2.printStackTrace();
     }
 
@@ -108,10 +118,10 @@ public class Server
           if(key.isValid() && key.isAcceptable())
           {
             //Nuova richiesta di connessione
-            System.out.println("[Server-Selector] key.isAcceptable");
+            println("key.isAcceptable");
             ServerSocketChannel server = (ServerSocketChannel) key.channel();
             SocketChannel client = server.accept();
-            System.out.println("[Server-Selector] New connection from client " +
+            println("New connection from client " +
                     client.getRemoteAddress());
             client.configureBlocking(false);
             ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
@@ -120,7 +130,7 @@ public class Server
           if(key.isValid() && key.isReadable())
           {
             //Nuovo evento in lettura
-            System.out.println("[SERVER-Selector] key.isReadable");
+            println("key.isReadable");
             SocketChannel channel = (SocketChannel)key.channel();
             channel.register(selector, SelectionKey.OP_WRITE, key.attachment());
 
@@ -130,11 +140,12 @@ public class Server
             res = channel.read(buffer);
             buffer.flip();
 
+            //TODO: Se res < 0, qualcosa è andato storto
             String toSplit = new String(buffer.array(), 0, res, StandardCharsets.ISO_8859_1);
             String[] tokens = toSplit.split(DEFAULT_DELIMITER);
 
             Op operation = Op.valueOf(tokens[0]);
-            System.out.println(toSplit);
+            println(toSplit);
 
           }
         }
