@@ -33,14 +33,14 @@ public class Server
   //Sessione utente
   private static final Map<SocketChannel, Sessione> sessions = new HashMap<>();
 
-  private static void println(String string)
+  private static void println(Object o)
   {
-    System.out.println("[Server] " + string);
+    System.out.println("[Server] " + o);
   }
 
-  private static void printErr(String string)
+  private static void printErr(Object o)
   {
-    System.err.println("[Server-Error] " + string);
+    System.err.println("[Server-Error] " + o);
   }
 
   private static Op handleLogin(String[] splitted, SocketChannel channel)
@@ -48,63 +48,41 @@ public class Server
     String nickname = splitted[1];
     String password = splitted[2];
 
-    //TODO: Restituire un messaggio TCP al client
-    Utente utente = users.get(nickname);
+    Sessione sessione = sessions.get(channel);
 
-    if(utente != null)
-    {
-      if(utente.getPassword().compareTo(password) == 0)
-      {
-        //La password è corretta
-        Sessione sessione = sessions.get(channel);
-        if(sessione != null)
-        {
-          sessione.setUtente(utente);
-          sessione.setStato(Sessione.Stato.Logged);
-          println("Sessione utente va in Logged");
-          return Op.SuccessfullyLogged;
-        }
-        else
-        {
-          printErr("Sessione inesistente");
-          return Op.Error;
-        }
-      }
-      else
-      {
-        //Password non corretta
-        printErr("Password " + password + " non corrisponde a " +
-                utente.getPassword());
-        return Op.WrongPassword;
-      }
-    }
-    else
-    {
-      //L'utente non esiste
-      printErr("L'utente " + nickname + " non esiste");
+    if(sessione == null)
+      return Op.UnknownSession;
+
+    if(sessione.getStato() == Sessione.Stato.Logged ||
+       sessione.getStato() == Sessione.Stato.Editing)
+      return Op.AlreadyLoggedIn;
+
+    Utente utente = users.get(nickname);
+    if(utente == null)
       return Op.NicknameDoesNotExists;
-    }
+
+    if(utente.getPassword().compareTo(password) != 0)
+      return Op.WrongPassword;
+
+    sessione.setUtente(utente);
+    sessione.setStato(Sessione.Stato.Logged);
+
+    return Op.SuccessfullyLoggedIn;
   }
 
-  private static void handleLogout(SocketChannel channel)
+  private static Op handleLogout(SocketChannel channel)
   {
-    try
-    {
-      if(sessions.remove(channel) == null)
-      {
-        printErr("Sessione inesistente");
-      }
-      else
-      {
-        println("Sessione rimossa con successo per il client " +
-                channel.getRemoteAddress());
-      }
-      channel.close();
-    }
-    catch(IOException e)
-    {
-      e.printStackTrace();
-    }
+    Sessione sessione = sessions.get(channel);
+    if(sessione == null)
+      return Op.UnknownSession;
+
+    if(sessione.getStato() == Sessione.Stato.Started ||
+       sessione.getStato() == Sessione.Stato.Editing)
+      return Op.CannotLogout;
+
+    sessione.setStato(Sessione.Stato.Started);
+
+    return Op.SuccessfullyLoggedOut;
   }
 
   //Metodo costruttore
@@ -136,7 +114,8 @@ public class Server
     {
       //Registrazione RMI
       RegUtenteImplementation object = new RegUtenteImplementation(users);
-      RegUtenteInterface stub = (RegUtenteInterface) UnicastRemoteObject.exportObject(object, 0);
+      RegUtenteInterface stub =
+              (RegUtenteInterface) UnicastRemoteObject.exportObject(object, 0);
       Registry registry = LocateRegistry.createRegistry(DEFAULT_RMI_PORT);
       registry.bind("RegUtente", stub);
     }
@@ -149,6 +128,7 @@ public class Server
     {
       printErr("exception: " + e2.toString());
       e2.printStackTrace();
+      System.exit(1);
     }
 
     ServerSocketChannel serverChannel;
@@ -216,7 +196,22 @@ public class Server
             if(res < 0)
             {
               //Il client si è disconnesso
-              handleLogout(channel);
+              if(sessions.remove(channel) == null)
+              {
+                printErr("Sessione inesistente");
+              }
+              else
+              {
+                println("Sessione rimossa con successo per il client " + channel.getRemoteAddress());
+              }
+              try
+              {
+                channel.close();
+              }
+              catch(IOException e)
+              {
+                e.printStackTrace();
+              }
             }
             else
             {
@@ -227,20 +222,20 @@ public class Server
               println("Requested Operation : " + requestedOperation.toString() +
                       " from Client IP : " + channel.socket().getInetAddress().getHostAddress() +
                       " port : " + channel.socket().getPort());
+              Op result;
               switch(requestedOperation)
               {
                 case Login :
-                  Op result = handleLogin(splitted, channel);
-                  //TODO: Metti il risultato nel buffer
-                  buffer.flip();
-
-                  //FIXME: il Wrapper ridimensiona il buffer
+                  result = handleLogin(splitted, channel);
+                  println("Result = " + result);
                   buffer = ByteBuffer.wrap(result.toString().getBytes());
-
                   channel.register(selector, SelectionKey.OP_WRITE, buffer);
                   break;
                 case Logout :
-                  handleLogout(channel);
+                  result = handleLogout(channel);
+                  println("Result = " + result);
+                  buffer = ByteBuffer.wrap(result.toString().getBytes());
+                  channel.register(selector, SelectionKey.OP_WRITE, buffer);
                   break;
                 default :
                   println("nessuna delle precedenti");
@@ -254,9 +249,7 @@ public class Server
             println("key.isWritable ");
             SocketChannel channel = (SocketChannel)key.channel();
             ByteBuffer buffer = (ByteBuffer) key.attachment();
-            System.out.println(buffer.capacity());
-            buffer.clear();
-            System.out.println((channel.write(buffer)));
+            println((channel.write(buffer)));
 
             channel.register(selector, SelectionKey.OP_READ, buffer);
 
@@ -264,7 +257,6 @@ public class Server
         }
         catch(IOException e)
         {
-          printErr("Exception");
           key.cancel();
           try
           {
@@ -277,7 +269,6 @@ public class Server
         }
       }
     }
-
 
   }
 

@@ -9,6 +9,8 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.StringJoiner;
@@ -20,17 +22,18 @@ public class Client
   private static int DEFAULT_PORT = 51811; //Porta di Default
   private static int DEFAULT_RMI_PORT = 51812; //Porta RMI
   private static String DEFAULT_DELIMITER = "#";
+  private static int DEFAULT_BUFFER_SIZE = 4096;
 
   private static Pattern validPattern = Pattern.compile("[A-Za-z0-9_]+");
 
-  private static void println(String string)
+  private static void println(Object o)
   {
-    System.out.println("[Client] " + string);
+    System.out.println("[Client] " + o);
   }
 
-  private static void printErr(String string)
+  private static void printErr(Object o)
   {
-    System.err.println("[Client-Error] " + string);
+    System.err.println("[Client-Error] " + o);
   }
 
   private static boolean isAValidString(String string)
@@ -38,13 +41,13 @@ public class Client
     return validPattern.matcher(string).matches();
   }
 
-  private static void handleRegister(String[] splitted)
+  private static Op handleRegister(String[] splitted)
   {
     //Controllo il numero di parametri
     if(splitted.length != 3)
     {
       printErr("Usage: register <username> <password>");
-      return;
+      return Op.UsageError;
     }
 
     String username = splitted[1];
@@ -53,47 +56,38 @@ public class Client
     if(!isAValidString(username) || !isAValidString(password))
     {
       printErr("Usage: register <username> <password>");
-      return;
+      return Op.UsageError;
     }
-    println("REGISTERING User " + username + " with password " +
-            password);
 
     //REGISTRAZIONE RMI
     try
     {
       Registry registry = LocateRegistry.getRegistry(DEFAULT_HOST, DEFAULT_RMI_PORT);
       RegUtenteInterface stub = (RegUtenteInterface) registry.lookup("RegUtente");
-      Op result = stub.registerUser(username, password);
-      if(result == Op.SuccessfullyRegistered)
-      {
-        println("Registrazione eseguita con successo");
-      }
-      else if(result == Op.Error)
-      {
-        printErr("Registrazione non andata a buon fine");
-      }
+      return stub.registerUser(username, password);
     }
-    catch(Exception e)
+    catch(RemoteException e1)
     {
-      printErr("exception: " + e.toString());
+      return Op.ClosedConnection;
+    }
+    catch(NotBoundException e)
+    {
       e.printStackTrace();
+      return Op.Error;
     }
   }
 
-  private static void handleLogin(String[] splitted, SocketChannel client)
+  private static Op handleLogin(String[] splitted, SocketChannel client)
   {
     //Controllo il numero di parametri
     if(splitted.length != 3)
     {
       printErr("Usage: login <username> <password>");
-      return;
+      return Op.UsageError;
     }
 
     String username = splitted[1];
     String password = splitted[2];
-
-    println("LOGGING User " + username + " with password " +
-            password);
 
     //LOGIN TCP
     //login#username#password
@@ -108,38 +102,71 @@ public class Client
     try
     {
       client.write(buffer);
-
-      //TODO: da migliorare buffer e dimensione
-      buffer = ByteBuffer.allocate(4096);
+      //Ho fatto il wrap, sovrascrivo il vecchio buffer
+      buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
 
       //Leggi l'esito
       int res;
-//      buffer.flip();
       res = client.read(buffer);
-      //TODO: gestire entrambi i casi
       if(res < 0)
       {
-        //Il server è stato chiuso?
-        printErr("Res < 0");
+        return Op.ClosedConnection;
       }
       else
       {
         buffer.flip();
         String result = new String(buffer.array(), 0,
                 res, StandardCharsets.ISO_8859_1);
-        println("RESPONSE: " + result);
+        return Op.valueOf(result);
       }
     }
     catch(IOException e)
     {
       e.printStackTrace();
+      return Op.Error;
     }
-
   }
 
-  private static void handleLogout()
+  private static Op handleLogout(SocketChannel client)
   {
-    println("LOGOUT!");
+    //LOGOUT TCP
+    //logout
+
+    StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
+    joiner.add(Op.Logout.toString());
+    String joinedString = joiner.toString();
+
+    byte[] operation = joinedString.getBytes();
+    ByteBuffer buffer = ByteBuffer.wrap(operation);
+
+    try
+    {
+      println("WRITTEN: " + client.write(buffer));
+      //Ho fatto il wrap, sovrascrivo il vecchio buffer
+      buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
+
+      //Leggi l'esito
+      int res;
+      res = client.read(buffer);
+      if(res < 0)
+      {
+        return Op.ClosedConnection;
+      }
+      else
+      {
+        buffer.flip();
+        String result = new String(buffer.array(), 0,
+                res, StandardCharsets.ISO_8859_1);
+        return Op.valueOf(result);
+      }
+
+    }
+    catch(IOException e)
+    {
+      e.printStackTrace();
+      return Op.Error;
+    }
+
   }
 
   public static void main(String[] args)
@@ -161,15 +188,16 @@ public class Client
       e2.printStackTrace();
     }
 
-    BufferedReader reader = new BufferedReader(new InputStreamReader(
-            System.in));
+    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
     String stdin;
-    boolean stopped = false;
+
+    boolean loggedIn = false;
 
     try
     {
       //Input da linea di comando
-      while(!stopped)
+      Op result = null;
+      while(result != Op.ClosedConnection)
       {
         stdin = reader.readLine();
         String[] splitted = stdin.split("\\s+");
@@ -177,17 +205,34 @@ public class Client
         switch(splitted[0].toLowerCase())
         {
           case "register" :
-            handleRegister(splitted);
+            if(loggedIn)
+            {
+              printErr("Non puoi registrarti mentre sei loggato");
+            }
+            else
+            {
+              result = handleRegister(splitted);
+              println("Result = " + result);
+            }
             break;
+
           case "login" :
-            handleLogin(splitted, client);
+            result = handleLogin(splitted, client);
+            println("Result = " + result);
+            if(result == Op.SuccessfullyLoggedIn)
+              loggedIn = true;
             break;
+
           case "logout" :
-            handleLogout();
-            stopped = true;
+            result = handleLogout(client);
+            println("Result = " + result);
+            if(result == Op.SuccessfullyLoggedOut)
+              loggedIn = false;
             break;
+
           default:
             printErr("Comando non riconosciuto");
+            break;
         }
 
       }

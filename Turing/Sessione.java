@@ -22,6 +22,10 @@ public class Sessione
     return utente;
   }
 
+  Stato getStato()
+  {
+    return stato;
+  }
   void setUtente(Utente utente)
   {
     this.utente = utente;
