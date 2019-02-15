@@ -1,27 +1,27 @@
 package Turing;
 
-public class Sezione
+class Sezione
 {
-  private boolean editing;
+  private Utente editingUser;
 
   Sezione()
   {
-    this.editing = false;
+    this.editingUser = null;
   }
 
-  boolean isBeingEdited()
+  Utente getUserEditing()
   {
-    return editing;
+    return editingUser;
   }
 
-  void edit()
+  void edit(Utente utente)
   {
-    editing = true;
+    editingUser = utente;
   }
 
   void endEdit()
   {
-    editing = false;
+    editingUser = null;
   }
 
 }

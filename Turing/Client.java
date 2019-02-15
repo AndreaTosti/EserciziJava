@@ -198,6 +198,36 @@ public class Client
 
   }
 
+  private static Op handleShare(String[] splitted, SocketChannel client)
+  {
+    //Controllo il numero di parametri
+    if(splitted.length != 3)
+    {
+      printErr("Usage: share <doc> <username>");
+      return Op.UsageError;
+    }
+
+    String nomeDocumento = splitted[1];
+    String username = splitted[2];
+
+    if(!isAValidString(nomeDocumento) || !isAValidString((username)))
+    {
+      printErr("Usage: share <doc> <username>");
+      return Op.UsageError;
+    }
+
+    //CONDIVISIONE DOCUMENTO TCP
+    //share#nomedocumento#username
+
+    StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
+    joiner.add(Op.Share.toString()).add(nomeDocumento).add(username);
+
+    Op result = sendRequest(joiner.toString(), client);
+    println(result);
+
+    return receiveOutcome(client);
+
+  }
 
 
   public static void main(String[] args)
@@ -263,6 +293,11 @@ public class Client
 
           case "create" :
             result = handleCreate(splitted, client);
+            println("Result = " + result);
+            break;
+
+          case "share" :
+            result = handleShare(splitted, client);
             println("Result = " + result);
             break;
 

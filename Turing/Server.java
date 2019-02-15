@@ -3,7 +3,6 @@ package Turing;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
-import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -66,7 +65,7 @@ public class Server
 
     Utente utente = users.get(nickname);
     if(utente == null)
-      return Op.NicknameDoesNotExists;
+      return Op.UserDoesNotExists;
 
     if(utente.getPassword().compareTo(password) != 0)
       return Op.WrongPassword;
@@ -106,24 +105,69 @@ public class Server
       return Op.UsageError;
     }
 
-    //TODO: Controlla di essere nello stato Logged e di non essere in stato Editing
-    //TODO: al nuovo documento bisogna settare il creatore
+    Sessione sessione = sessions.get(channel);
 
-    if(documents.putIfAbsent(nomeDocumento,new Documento(nomeDocumento, numSezioni)) != null)
-    {
-      //Il documento esiste già
+    if(sessione == null)
+      return Op.UnknownSession;
+
+    if(sessione.getStato() == Sessione.Stato.Started ||
+       sessione.getStato() == Sessione.Stato.Editing)
+      return Op.MustBeInLoggedState;
+
+    Utente utente = sessione.getUtente();
+
+    if(utente == null)
+      return Op.UserDoesNotExists;
+
+    Documento documento = new Documento(nomeDocumento, numSezioni, utente);
+    if(documents.putIfAbsent(nomeDocumento, documento) != null)
       return Op.DocumentAlreadyExists;
-    }
-    else
-    {
-      //Creato un nuovo documento
-      //TODO: Bisogna settare l'Owner di quel documento...
 
-
-      return Op.SuccessfullyCreated;
-    }
-
+    return Op.SuccessfullyCreated;
   }
+
+  private static Op handleShare(String[] splitted, SocketChannel channel)
+  {
+    String nomeDocumento = splitted[1];
+    String nickname = splitted[2];
+
+    Sessione sessione = sessions.get(channel);
+
+    if(sessione == null)
+      return Op.UnknownSession;
+
+    if(sessione.getStato() == Sessione.Stato.Started ||
+       sessione.getStato() == Sessione.Stato.Editing)
+      return Op.MustBeInLoggedState;
+
+    Utente utente = sessione.getUtente();
+
+    if(utente == null)
+      return Op.UserDoesNotExists;
+
+    Documento documento = documents.get(nomeDocumento);
+    if(documento == null)
+      return Op.DocumentDoesNotExists;
+
+    if(!documento.getCreatore().equals(utente))
+      return Op.NotDocumentCreator;
+
+    Utente utenteCollaboratore = users.get(nickname);
+
+    if(utenteCollaboratore == null)
+      return Op.UserDoesNotExists;
+
+    if(documento.getCreatore().equals(utenteCollaboratore))
+      return Op.CreatorCannotBeCollaborator;
+
+    if(documento.isCollaboratore(utenteCollaboratore.getNickname()))
+      return Op.AlreadyCollaborates;
+
+    documento.addCollaboratore(utenteCollaboratore);
+    return Op.SuccessfullyShared;
+  }
+
+
 
 
   //Metodo costruttore
@@ -272,17 +316,28 @@ public class Server
                   buffer = ByteBuffer.wrap(result.toString().getBytes());
                   channel.register(selector, SelectionKey.OP_WRITE, buffer);
                   break;
+
                 case Logout :
                   result = handleLogout(channel);
                   println("Result = " + result);
                   buffer = ByteBuffer.wrap(result.toString().getBytes());
                   channel.register(selector, SelectionKey.OP_WRITE, buffer);
                   break;
+
                 case Create :
                   result = handleCreate(splitted, channel);
                   println("Result = " + result);
                   buffer = ByteBuffer.wrap(result.toString().getBytes());
                   channel.register(selector, SelectionKey.OP_WRITE, buffer);
+                  break;
+
+                case Share :
+                  result = handleShare(splitted, channel);
+                  println("Result = " + result);
+                  buffer = ByteBuffer.wrap(result.toString().getBytes());
+                  channel.register(selector, SelectionKey.OP_WRITE, buffer);
+                  break;
+
                 default :
                   println("nessuna delle precedenti");
                   break;

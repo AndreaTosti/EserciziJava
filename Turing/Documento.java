@@ -1,23 +1,45 @@
 package Turing;
 
+
+import java.util.HashMap;
+import java.util.Map;
+
 public class Documento
 {
   private String nome;
   private Sezione[] sezioni;
   private int numSezioni;
-  private String nomeCreatore;
+  private Utente creatore;
+  private Map<String, Utente> collaborators;
 
-  Documento(String nome, int numSezioni, String nomeCreatore)
+  Documento(String nome, int numSezioni, Utente creatore)
   {
     this.nome = nome;
     this.numSezioni = numSezioni;
-    this.nomeCreatore = nomeCreatore;
-
+    this.creatore = creatore;
     this.sezioni = new Sezione[numSezioni];
+    this.collaborators = new HashMap<>();
+
     for(int i = 0; i < numSezioni; i++)
     {
       this.sezioni[i] = new Sezione();
     }
+
+  }
+
+  Utente getCreatore()
+  {
+    return creatore;
+  }
+
+  boolean isCollaboratore(String nome)
+  {
+    return collaborators.containsKey(nome);
+  }
+
+  void addCollaboratore(Utente collaboratore)
+  {
+    collaborators.put(collaboratore.getNickname(), collaboratore);
   }
 
 }
