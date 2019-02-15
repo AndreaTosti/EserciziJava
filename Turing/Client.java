@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
@@ -40,6 +41,50 @@ public class Client
   {
     return validPattern.matcher(string).matches();
   }
+
+
+  private static Op sendRequest(String joinedString, SocketChannel client)
+  {
+    byte[] operation = joinedString.getBytes();
+    ByteBuffer buffer = ByteBuffer.wrap(operation);
+    try
+    {
+      client.write(buffer);
+      return Op.SuccessfullySent;
+    }
+    catch(IOException e)
+    {
+      e.printStackTrace();
+      return Op.Error;
+    }
+  }
+
+  private static Op receiveOutcome(SocketChannel client)
+  {
+    ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
+    int res;
+    try
+    {
+      res = client.read(buffer);
+      if(res < 0)
+      {
+        return Op.ClosedConnection;
+      }
+      else
+      {
+        buffer.flip();
+        String result = new String(buffer.array(), 0,
+                res, StandardCharsets.ISO_8859_1);
+        return Op.valueOf(result);
+      }
+    }
+    catch(IOException e)
+    {
+      e.printStackTrace();
+      return Op.Error;
+    }
+  }
+
 
   private static Op handleRegister(String[] splitted)
   {
@@ -91,40 +136,12 @@ public class Client
 
     //LOGIN TCP
     //login#username#password
-
     StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
     joiner.add(Op.Login.toString()).add(username).add(password);
-    String joinedString = joiner.toString();
+    Op resultSend = sendRequest(joiner.toString(), client);
+    println(resultSend);
 
-    byte[] operation = joinedString.getBytes();
-    ByteBuffer buffer = ByteBuffer.wrap(operation);
-
-    try
-    {
-      client.write(buffer);
-      //Ho fatto il wrap, sovrascrivo il vecchio buffer
-      buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
-
-      //Leggi l'esito
-      int res;
-      res = client.read(buffer);
-      if(res < 0)
-      {
-        return Op.ClosedConnection;
-      }
-      else
-      {
-        buffer.flip();
-        String result = new String(buffer.array(), 0,
-                res, StandardCharsets.ISO_8859_1);
-        return Op.valueOf(result);
-      }
-    }
-    catch(IOException e)
-    {
-      e.printStackTrace();
-      return Op.Error;
-    }
+    return receiveOutcome(client);
   }
 
   private static Op handleLogout(SocketChannel client)
@@ -134,40 +151,54 @@ public class Client
 
     StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
     joiner.add(Op.Logout.toString());
-    String joinedString = joiner.toString();
+    Op result = sendRequest(joiner.toString(), client);
+    println(result);
 
-    byte[] operation = joinedString.getBytes();
-    ByteBuffer buffer = ByteBuffer.wrap(operation);
+    return receiveOutcome(client);
+  }
 
+  private static Op handleCreate(String[] splitted, SocketChannel client)
+  {
+    //Controllo il numero di parametri
+    if(splitted.length != 3)
+    {
+      printErr("Usage: create <doc> <numsezioni>");
+      return Op.UsageError;
+    }
+
+    String nomeDocumento = splitted[1];
+
+    if(!isAValidString(nomeDocumento))
+    {
+      printErr("Usage: create <doc> <numsezioni>");
+      return Op.UsageError;
+    }
+
+    int numSezioni;
     try
     {
-      println("WRITTEN: " + client.write(buffer));
-      //Ho fatto il wrap, sovrascrivo il vecchio buffer
-      buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
-
-      //Leggi l'esito
-      int res;
-      res = client.read(buffer);
-      if(res < 0)
-      {
-        return Op.ClosedConnection;
-      }
-      else
-      {
-        buffer.flip();
-        String result = new String(buffer.array(), 0,
-                res, StandardCharsets.ISO_8859_1);
-        return Op.valueOf(result);
-      }
-
+      numSezioni = Integer.parseInt(splitted[2]);
     }
-    catch(IOException e)
+    catch(NumberFormatException e)
     {
-      e.printStackTrace();
-      return Op.Error;
+      printErr("Usage: create <doc> <numsezioni>");
+      return Op.UsageError;
     }
+
+    //CREAZIONE DOCUMENTO TCP
+    //create#nomedocumento#numsezioni
+
+    StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
+    joiner.add(Op.Create.toString()).add(nomeDocumento).add(splitted[2]);
+
+    Op result = sendRequest(joiner.toString(), client);
+    println(result);
+
+    return receiveOutcome(client);
 
   }
+
+
 
   public static void main(String[] args)
   {
@@ -228,6 +259,11 @@ public class Client
             println("Result = " + result);
             if(result == Op.SuccessfullyLoggedOut)
               loggedIn = false;
+            break;
+
+          case "create" :
+            result = handleCreate(splitted, client);
+            println("Result = " + result);
             break;
 
           default:

@@ -3,6 +3,7 @@ package Turing;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -27,11 +28,17 @@ public class Server
   private static int BUFFER_SIZE  = 4096; //Dimensione del buffer
   private static String DEFAULT_DELIMITER = "#";
 
+
+
   //Utenti
   private static final ConcurrentMap<String, Utente> users = new ConcurrentHashMap<>();
 
   //Sessione utente
   private static final Map<SocketChannel, Sessione> sessions = new HashMap<>();
+
+  //Documenti
+  private static final Map<String, Documento> documents = new HashMap<>();
+
 
   private static void println(Object o)
   {
@@ -84,6 +91,40 @@ public class Server
 
     return Op.SuccessfullyLoggedOut;
   }
+
+  private static Op handleCreate(String[] splitted, SocketChannel channel)
+  {
+    String nomeDocumento = splitted[1];
+
+    int numSezioni;
+    try
+    {
+      numSezioni = Integer.parseInt(splitted[2]);
+    }
+    catch(NumberFormatException e)
+    {
+      return Op.UsageError;
+    }
+
+    //TODO: Controlla di essere nello stato Logged e di non essere in stato Editing
+    //TODO: al nuovo documento bisogna settare il creatore
+
+    if(documents.putIfAbsent(nomeDocumento,new Documento(nomeDocumento, numSezioni)) != null)
+    {
+      //Il documento esiste già
+      return Op.DocumentAlreadyExists;
+    }
+    else
+    {
+      //Creato un nuovo documento
+      //TODO: Bisogna settare l'Owner di quel documento...
+
+
+      return Op.SuccessfullyCreated;
+    }
+
+  }
+
 
   //Metodo costruttore
   public static void main(String[] args)
@@ -237,6 +278,11 @@ public class Server
                   buffer = ByteBuffer.wrap(result.toString().getBytes());
                   channel.register(selector, SelectionKey.OP_WRITE, buffer);
                   break;
+                case Create :
+                  result = handleCreate(splitted, channel);
+                  println("Result = " + result);
+                  buffer = ByteBuffer.wrap(result.toString().getBytes());
+                  channel.register(selector, SelectionKey.OP_WRITE, buffer);
                 default :
                   println("nessuna delle precedenti");
                   break;
