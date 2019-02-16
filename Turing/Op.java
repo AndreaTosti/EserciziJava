@@ -13,6 +13,7 @@ public enum Op
   UserDoesNotExists,          // L'utente non esiste
   NicknameAlreadyExists,      // Esiste già l'utente
   DocumentAlreadyExists,      // Esiste già il documento
+  DirectoryAlreadyExists,     // Esiste già la cartella
   NotDocumentCreator,         // L'utente non è il creatore del documento
   NotDocumentCreatorNorCollaborator, // L'utente non è né il creatore del
                                      // documento, né un collaboratore

@@ -23,6 +23,7 @@ public class Client
   private static int DEFAULT_RMI_PORT = 51812; //Porta RMI
   private static String DEFAULT_DELIMITER = "#";
   private static int DEFAULT_BUFFER_SIZE = 4096;
+  private static String DEFAULT_PARENT_FOLDER = "518111_ClientDirectories";
 
   private static Pattern validPattern = Pattern.compile("[A-Za-z0-9_]+");
 
@@ -270,7 +271,7 @@ public class Client
         printErr("Usage: show <doc> [<sec>]");
         return Op.UsageError;
       }
-      if(numSezione < 1)
+      if(numSezione < 0)
       {
         printErr("Usage: show <doc> [<sec>]");
         return Op.UsageError;
@@ -289,6 +290,34 @@ public class Client
     println(result);
 
     return receiveOutcome(client);
+  }
+
+  private static Op receiveSections(String[] splitted, SocketChannel client)
+  {
+    //  TODO:
+    //      Se splitted.length è 3 allora devo scaricare una sezione
+    //      Se splitted.length è 2 allora devo scaricare tutte le sezioni
+    int numSezione;
+    if(splitted.length == 3)
+    {
+      //Ricevi una singola sezione
+      try
+      {
+        numSezione = Integer.parseInt(splitted[2]);
+      }
+      catch(NumberFormatException e)
+      {
+        return Op.UsageError;
+      }
+      if(numSezione < 0)
+      {
+        return Op.UsageError;
+      }
+    }
+
+
+
+
 
   }
 
@@ -320,6 +349,8 @@ public class Client
     {
       //Input da linea di comando
       Op result = null;
+      Op result_2 = null;
+
       while(result != Op.ClosedConnection)
       {
         stdin = reader.readLine();
@@ -366,6 +397,12 @@ public class Client
           case "show" :
             result = handleShow(splitted, client);
             println("Result = " + result);
+            if(result == Op.SuccessfullyShown)
+            {
+              result_2 = receiveSections(splitted, client);
+              println("Result2 = " + result_2);
+            }
+
             break;
 
           default:

@@ -3,10 +3,12 @@ package Turing;
 class Sezione
 {
   private Utente editingUser;
+  private String nome;
 
-  Sezione()
+  Sezione(String nome)
   {
     this.editingUser = null;
+    this.nome = nome;
   }
 
   Utente getUserEditing()
@@ -22,6 +24,11 @@ class Sezione
   void endEdit()
   {
     editingUser = null;
+  }
+
+  String getNome()
+  {
+    return nome;
   }
 
 }

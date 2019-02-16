@@ -22,7 +22,7 @@ public class Documento
 
     for(int i = 0; i < numSezioni; i++)
     {
-      this.sezioni[i] = new Sezione();
+      this.sezioni[i] = new Sezione(nome + "_" + i);
     }
 
   }
@@ -40,6 +40,11 @@ public class Documento
   void addCollaboratore(Utente collaboratore)
   {
     collaborators.put(collaboratore.getNickname(), collaboratore);
+  }
+
+  Sezione[] getSezioni()
+  {
+    return sezioni;
   }
 
 }

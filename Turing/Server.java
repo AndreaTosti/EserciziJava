@@ -1,5 +1,6 @@
 package Turing;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -9,6 +10,9 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.rmi.registry.Registry;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.ExportException;
@@ -23,7 +27,7 @@ public class Server
   private static int DEFAULT_RMI_PORT = 51812; //Porta RMI
   private static int BUFFER_SIZE  = 4096; //Dimensione del buffer
   private static String DEFAULT_DELIMITER = "#";
-
+  private static String DEFAULT_PARENT_FOLDER = "518111_ServerDirectories";
 
 
   //Utenti
@@ -144,6 +148,28 @@ public class Server
     Documento documento = new Documento(nomeDocumento, numSezioni, utente);
     if(documents.putIfAbsent(nomeDocumento, documento) != null)
       return Op.DocumentAlreadyExists;
+
+    //Creo una cartella avente come nome il nome del documento
+    Path directoryPath = Paths.get(DEFAULT_PARENT_FOLDER + File.separator + nomeDocumento);
+    if(Files.exists(directoryPath))
+      return Op.DirectoryAlreadyExists;
+
+    try
+    {
+      Files.createDirectories(directoryPath);
+      Sezione[] sezioni = documento.getSezioni();
+      for(Sezione sezione: sezioni)
+      {
+        Path filePath = Paths.get(DEFAULT_PARENT_FOLDER + File.separator +
+                nomeDocumento + File.separator + sezione.getNome() + ".txt");
+        Files.createFile(filePath);
+      }
+    }
+    catch(IOException e)
+    {
+      e.printStackTrace();
+      return Op.Error;
+    }
 
     return Op.SuccessfullyCreated;
   }
@@ -332,6 +358,7 @@ public class Server
             attachments.add(1, ByteBuffer.allocate(Long.BYTES));
             attachments.add(2, Step.WaitingForMessageSize);
             attachments.add(3, Long.BYTES); //Total Size
+            attachments.add(4, null);  //Parametri
 
             client.register(selector, SelectionKey.OP_READ, attachments);
 
@@ -350,6 +377,7 @@ public class Server
             ByteBuffer buffer = (ByteBuffer) attachments.get(1);
             Step step = (Step) attachments.get(2);
             int totalSize = (int) attachments.get(3);
+            String[] parameters = (String[]) attachments.get(4);
 
             int res;
 
@@ -385,6 +413,7 @@ public class Server
                     attachments.set(1, ByteBuffer.allocate(messageSize));
                     attachments.set(2, Step.WaitingForMessage);
                     attachments.set(3, messageSize); //Total Size
+                    attachments.set(4, null); //Parametri
                   }
                 }
                 break;
@@ -454,6 +483,16 @@ public class Server
                       attachments.set(1, buffer);
                       attachments.set(2, Step.SendingOutcome);
                       attachments.set(3, buffer.array().length);
+
+                      if(result == Op.SuccessfullyShown)
+                      {
+                        attachments.set(4, splitted); //Parametri
+                      }
+                      else
+                      {
+                        attachments.set(4, null); //Parametri
+                      }
+
                       channel.register(selector, SelectionKey.OP_WRITE, attachments);
 
                     }
@@ -483,6 +522,7 @@ public class Server
             ByteBuffer buffer = (ByteBuffer) attachments.get(1);
             Step step = (Step) attachments.get(2);
             int totalSize = (int) attachments.get(3);
+            String[] parameters = (String[]) attachments.get(4);
 
 
             switch(step)
@@ -490,7 +530,7 @@ public class Server
               case SendingOutcome :
                 res = channel.write(buffer);
 
-                println("Read " + res + " bytes");
+                println("Written " + res + " bytes");
                 if(res < remainingBytes)
                 {
                   //Non abbiamo finito ad inviare l'esito
@@ -501,15 +541,68 @@ public class Server
                 }
                 else
                 {
-                  //Abbiamo inviato l'esito, torno nello stato
-                  //WaitingForMessageSize
-                  attachments.add(0, Long.BYTES); //Remaining Bytes
-                  attachments.add(1, ByteBuffer.allocate(Long.BYTES));
-                  attachments.add(2, Step.WaitingForMessageSize);
-                  attachments.add(3, Long.BYTES); //Total Size
-                  channel.register(selector, SelectionKey.OP_READ, attachments);
+                  // Abbiamo inviato l'esito
+                  attachments.set(0, Long.BYTES); //Remaining Bytes
+                  attachments.set(1, ByteBuffer.allocate(Long.BYTES));
+
+                  if(parameters != null)
+                  {
+                    Op requestedOperation = Op.valueOf(parameters[0]);
+                    if(requestedOperation == Op.Show)
+                    {
+                      attachments.set(2, Step.SendingNumberOfSections);
+                      channel.register(selector, SelectionKey.OP_WRITE, attachments);
+                    }
+                  }
+                  else
+                  {
+                    // torno nello stato WaitingForMessageSize
+                    attachments.set(2, Step.WaitingForMessageSize);
+                    channel.register(selector, SelectionKey.OP_READ, attachments);
+                  }
+
+
+                  attachments.set(3, Long.BYTES); //Total Size
                 }
                 break;
+
+              case SendingNumberOfSections :
+
+                String nomeDocumento = parameters[1];
+                Documento documento = documents.get(nomeDocumento);
+                Sezione[] sezioni;
+                int numSezioni;
+
+                if(parameters.length == 3)
+                {
+                  //singola sezione
+                  int numSezione = Integer.parseInt(parameters[2]);
+                  Sezione sezione = documento.getSezioni()[numSezione];
+                  sezioni = new Sezione[]{sezione};
+                  numSezioni = 1;
+                }
+                else if(parameters.length == 2)
+                {
+                  //tutte le sezioni
+                  sezioni = documento.getSezioni();
+                  numSezioni = documento.getSezioni().length;
+                }
+                else
+                {
+                  sezioni = null;
+                  numSezioni = -1;
+                }
+                //Invio il numero di sezioni
+                String numBytesStr = String.format("%0" + Long.BYTES + "d", numSezioni);
+                byte[] numBytes = numBytesStr.getBytes();
+                buffer = ByteBuffer.wrap(numBytes);
+                attachments.set(0, buffer.array().length);
+                attachments.set(1, buffer);
+                attachments.set(2, Step.SendingSections);
+                attachments.set(3, buffer.array().length);
+                attachments.set(4, sezioni); //Parametri
+                break;
+
               default :
                 println("nessuna delle precedenti");
                 break;
