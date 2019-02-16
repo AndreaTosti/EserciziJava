@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
@@ -45,11 +44,16 @@ public class Client
 
   private static Op sendRequest(String joinedString, SocketChannel client)
   {
-    byte[] operation = joinedString.getBytes();
-    ByteBuffer buffer = ByteBuffer.wrap(operation);
+    byte[] operation = joinedString.getBytes(StandardCharsets.ISO_8859_1);
+    //Invio il numero di bytes dell'operazione facendo il Padding
+    String numBytesStr = String.format("%0" + Long.BYTES + "d", operation.length);
+    byte[] numBytes = numBytesStr.getBytes();
+    ByteBuffer buffer0 = ByteBuffer.wrap(numBytes);
+    ByteBuffer buffer1 = ByteBuffer.wrap(operation);
     try
     {
-      client.write(buffer);
+      printErr("Written " + client.write(buffer0) + " bytes");
+      printErr("Written " + client.write(buffer1) + " bytes");
       return Op.SuccessfullySent;
     }
     catch(IOException e)
@@ -80,6 +84,8 @@ public class Client
     }
     catch(IOException e)
     {
+      //TODO: Qui il server potrebbe aver chiuso brutalmente il server
+      //      restituire ClosedConnection invece di stampare lo stacktrace
       e.printStackTrace();
       return Op.Error;
     }
@@ -185,6 +191,12 @@ public class Client
       return Op.UsageError;
     }
 
+    if(numSezioni < 1)
+    {
+      printErr("Usage: create <doc> <numsezioni>");
+      return Op.UsageError;
+    }
+
     //CREAZIONE DOCUMENTO TCP
     //create#nomedocumento#numsezioni
 
@@ -229,6 +241,56 @@ public class Client
 
   }
 
+  private static Op handleShow(String[] splitted, SocketChannel client)
+  {
+    //Controllo il numero di parametri
+    if(splitted.length != 2 && splitted.length != 3)
+    {
+      printErr("Usage: show <doc> [<sec>]");
+      return Op.UsageError;
+    }
+
+    String nomeDocumento = splitted[1];
+
+    if(!isAValidString(nomeDocumento))
+    {
+      printErr("Usage: show <doc> [<sec>]");
+      return Op.UsageError;
+    }
+
+    int numSezione;
+    if(splitted.length == 3)
+    {
+      try
+      {
+        numSezione = Integer.parseInt(splitted[2]);
+      }
+      catch(NumberFormatException e)
+      {
+        printErr("Usage: show <doc> [<sec>]");
+        return Op.UsageError;
+      }
+      if(numSezione < 1)
+      {
+        printErr("Usage: show <doc> [<sec>]");
+        return Op.UsageError;
+      }
+    }
+
+    //Visualizzazione di una sezione o dell'intero documento
+    //show#nomedocumento[#numsezione]
+
+    StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
+    joiner.add(Op.Show.toString()).add(nomeDocumento);
+    if(splitted.length == 3)
+      joiner.add(splitted[2]);
+
+    Op result = sendRequest(joiner.toString(), client);
+    println(result);
+
+    return receiveOutcome(client);
+
+  }
 
   public static void main(String[] args)
   {
@@ -298,6 +360,11 @@ public class Client
 
           case "share" :
             result = handleShare(splitted, client);
+            println("Result = " + result);
+            break;
+
+          case "show" :
+            result = handleShow(splitted, client);
             println("Result = " + result);
             break;
 

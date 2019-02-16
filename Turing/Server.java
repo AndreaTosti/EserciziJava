@@ -13,10 +13,7 @@ import java.rmi.registry.Registry;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -47,6 +44,31 @@ public class Server
   private static void printErr(Object o)
   {
     System.err.println("[Server-Error] " + o);
+  }
+
+
+  private static Op handleClosedConnection(SocketChannel channel)
+  {
+    Op returnValue;
+    if(sessions.remove(channel) == null)
+    {
+      returnValue = Op.UnknownSession;
+    }
+    else
+    {
+      returnValue = Op.SuccessfullyRemovedSession;
+    }
+    try
+    {
+      channel.close();
+    }
+    catch(IOException e)
+    {
+      e.printStackTrace();
+      return returnValue;
+    }
+
+    return returnValue;
   }
 
   private static Op handleLogin(String[] splitted, SocketChannel channel)
@@ -160,14 +182,54 @@ public class Server
     if(documento.getCreatore().equals(utenteCollaboratore))
       return Op.CreatorCannotBeCollaborator;
 
-    if(documento.isCollaboratore(utenteCollaboratore.getNickname()))
+    if(documento.isCollaboratore(utenteCollaboratore))
       return Op.AlreadyCollaborates;
 
     documento.addCollaboratore(utenteCollaboratore);
     return Op.SuccessfullyShared;
   }
 
+  private static Op handleShow(String[] splitted, SocketChannel channel)
+  {
+    String nomeDocumento = splitted[1];
 
+    int numSezione;
+    if(splitted.length == 3)
+    {
+      try
+      {
+        numSezione = Integer.parseInt(splitted[2]);
+      }
+      catch(NumberFormatException e)
+      {
+        return Op.UsageError;
+      }
+    }
+
+    Sessione sessione = sessions.get(channel);
+
+    if(sessione == null)
+      return Op.UnknownSession;
+
+    if(sessione.getStato() == Sessione.Stato.Started ||
+       sessione.getStato() == Sessione.Stato.Editing)
+      return Op.MustBeInLoggedState;
+
+    Utente utente = sessione.getUtente();
+
+    if(utente == null)
+      return Op.UserDoesNotExists;
+
+    Documento documento = documents.get(nomeDocumento);
+    if(documento == null)
+      return Op.DocumentDoesNotExists;
+
+    if(!documento.getCreatore().equals(utente) &&
+       !documento.isCollaboratore(utente))
+      return Op.NotDocumentCreatorNorCollaborator;
+
+    return Op.SuccessfullyShown;
+  }
 
 
   //Metodo costruttore
@@ -258,12 +320,20 @@ public class Server
           {
             //Nuova richiesta di connessione
             println("key.isAcceptable");
+
             ServerSocketChannel server = (ServerSocketChannel) key.channel();
             SocketChannel client = server.accept();
             println("New connection from client " + client.getRemoteAddress());
             client.configureBlocking(false);
-            ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
-            client.register(selector, SelectionKey.OP_READ, buffer);
+
+            ArrayList<Object> attachments = new ArrayList<>();
+            //Bisogna leggere Long.BYTES che è la dimensione del messaggio
+            attachments.add(0, Long.BYTES); //Remaining Bytes
+            attachments.add(1, ByteBuffer.allocate(Long.BYTES));
+            attachments.add(2, Step.WaitingForMessageSize);
+            attachments.add(3, Long.BYTES); //Total Size
+
+            client.register(selector, SelectionKey.OP_READ, attachments);
 
             //Crea una nuova sessione per il client
             sessions.put(client, new Sessione());
@@ -274,85 +344,176 @@ public class Server
             //Nuovo evento in lettura
             println("key.isReadable ");
             SocketChannel channel = (SocketChannel)key.channel();
-            ByteBuffer buffer = (ByteBuffer) key.attachment();
+
+            ArrayList<Object> attachments = (ArrayList) key.attachment();
+            int remainingBytes = (int) attachments.get(0);
+            ByteBuffer buffer = (ByteBuffer) attachments.get(1);
+            Step step = (Step) attachments.get(2);
+            int totalSize = (int) attachments.get(3);
+
             int res;
-            buffer.clear();
-            res = channel.read(buffer);
-            if(res < 0)
+
+            switch(step)
             {
-              //Il client si è disconnesso
-              if(sessions.remove(channel) == null)
-              {
-                printErr("Sessione inesistente");
-              }
-              else
-              {
-                println("Sessione rimossa con successo per il client " + channel.getRemoteAddress());
-              }
-              try
-              {
-                channel.close();
-              }
-              catch(IOException e)
-              {
-                e.printStackTrace();
-              }
-            }
-            else
-            {
-              buffer.flip();
-              String toSplit = new String(buffer.array(), 0, res, StandardCharsets.ISO_8859_1);
-              String[] splitted = toSplit.split(DEFAULT_DELIMITER);
-              Op requestedOperation = Op.valueOf(splitted[0]);
-              println("Requested Operation : " + requestedOperation.toString() +
-                      " from Client IP : " + channel.socket().getInetAddress().getHostAddress() +
-                      " port : " + channel.socket().getPort());
-              Op result;
-              switch(requestedOperation)
-              {
-                case Login :
-                  result = handleLogin(splitted, channel);
-                  println("Result = " + result);
-                  buffer = ByteBuffer.wrap(result.toString().getBytes());
-                  channel.register(selector, SelectionKey.OP_WRITE, buffer);
-                  break;
+              case WaitingForMessageSize :
+                res = channel.read(buffer);
+                printErr("Read " + res + " bytes");
 
-                case Logout :
-                  result = handleLogout(channel);
-                  println("Result = " + result);
-                  buffer = ByteBuffer.wrap(result.toString().getBytes());
-                  channel.register(selector, SelectionKey.OP_WRITE, buffer);
-                  break;
+                if(res < 0)
+                {
+                  handleClosedConnection(channel);
+                }
+                else
+                {
+                  if(res < remainingBytes)
+                  {
+                    //Non abbiamo ancora la dimensione del messaggio
+                    remainingBytes -= res;
+                    attachments.set(0, remainingBytes);
+                    println("res: " + res);
+                    continue;
+                  }
+                  else
+                  {
+                    //Abbiamo la dimensione del messaggio nel buffer
+                    //Ora bisogna scaricare il messaggio
+                    buffer.flip();
+                    int messageSize = Integer.valueOf(new String(buffer.array(),
+                            0, Long.BYTES, StandardCharsets.ISO_8859_1));
+                    println("Message size: " + messageSize);
+                    attachments.set(0, messageSize); //Remaining Size
+                    attachments.set(1, ByteBuffer.allocate(messageSize));
+                    attachments.set(2, Step.WaitingForMessage);
+                    attachments.set(3, messageSize); //Total Size
+                  }
+                }
+                break;
 
-                case Create :
-                  result = handleCreate(splitted, channel);
-                  println("Result = " + result);
-                  buffer = ByteBuffer.wrap(result.toString().getBytes());
-                  channel.register(selector, SelectionKey.OP_WRITE, buffer);
-                  break;
+              case WaitingForMessage :
+                try
+                {
+                  res = channel.read(buffer);
 
-                case Share :
-                  result = handleShare(splitted, channel);
-                  println("Result = " + result);
-                  buffer = ByteBuffer.wrap(result.toString().getBytes());
-                  channel.register(selector, SelectionKey.OP_WRITE, buffer);
-                  break;
+                  if(res < 0)
+                  {
+                    handleClosedConnection(channel);
+                  }
+                  else
+                  {
+                    println("Read " + res + " bytes");
+                    if(res < remainingBytes)
+                    {
+                      //Non abbiamo ancora ricevuto il messaggio per intero
+                      remainingBytes -= res;
+                      attachments.set(0, remainingBytes);
+                      println("res: " + res);
+                      continue;
+                    }
+                    else
+                    {
+                      //Abbiamo il messaggio
+                      buffer.flip();
+                      String toSplit = new String(buffer.array(), 0, totalSize, StandardCharsets.ISO_8859_1);
+                      String[] splitted = toSplit.split(DEFAULT_DELIMITER);
+                      Op requestedOperation = Op.valueOf(splitted[0]);
+                      println("Requested Operation : " + requestedOperation.toString() +
+                              " from Client IP : " + channel.socket().getInetAddress().getHostAddress() +
+                              " port : " + channel.socket().getPort());
+                      Op result;
+                      printErr(toSplit);
+                      switch(requestedOperation)
+                      {
+                        case Login:
+                          result = handleLogin(splitted, channel);
+                          break;
 
-                default :
-                  println("nessuna delle precedenti");
-                  break;
-              }
+                        case Logout:
+                          result = handleLogout(channel);
+                          break;
+
+                        case Create:
+                          result = handleCreate(splitted, channel);
+                          break;
+
+                        case Share:
+                          result = handleShare(splitted, channel);
+                          break;
+
+                        case Show:
+                          result = handleShow(splitted, channel);
+                          break;
+
+                        default:
+                          result = Op.UsageError;
+                          break;
+                      }
+
+                      println("Result = " + result);
+                      buffer = ByteBuffer.wrap(result.toString().getBytes());
+                      attachments.set(0, buffer.array().length);
+                      attachments.set(1, buffer);
+                      attachments.set(2, Step.SendingOutcome);
+                      attachments.set(3, buffer.array().length);
+                      channel.register(selector, SelectionKey.OP_WRITE, attachments);
+
+                    }
+                  }
+                }
+                catch(IOException e)
+                {
+                  e.printStackTrace();
+                }
+
+
+                break;
+              default :
+                println("nessuna delle precedenti");
+                break;
             }
           }
           if(key.isValid() && key.isWritable())
           {
             //Nuovo evento in scrittura
             println("key.isWritable ");
-            SocketChannel channel = (SocketChannel)key.channel();
-            ByteBuffer buffer = (ByteBuffer) key.attachment();
-            println((channel.write(buffer)));
 
-            channel.register(selector, SelectionKey.OP_READ, buffer);
+            int res;
+            SocketChannel channel = (SocketChannel)key.channel();
+            ArrayList<Object> attachments = (ArrayList) key.attachment();
+            int remainingBytes = (int) attachments.get(0);
+            ByteBuffer buffer = (ByteBuffer) attachments.get(1);
+            Step step = (Step) attachments.get(2);
+            int totalSize = (int) attachments.get(3);
+
+
+            switch(step)
+            {
+              case SendingOutcome :
+                res = channel.write(buffer);
+
+                println("Read " + res + " bytes");
+                if(res < remainingBytes)
+                {
+                  //Non abbiamo finito ad inviare l'esito
+                  remainingBytes -= res;
+                  attachments.set(0, remainingBytes);
+                  println("res: " + res);
+                  continue;
+                }
+                else
+                {
+                  //Abbiamo inviato l'esito, torno nello stato
+                  //WaitingForMessageSize
+                  attachments.add(0, Long.BYTES); //Remaining Bytes
+                  attachments.add(1, ByteBuffer.allocate(Long.BYTES));
+                  attachments.add(2, Step.WaitingForMessageSize);
+                  attachments.add(3, Long.BYTES); //Total Size
+                  channel.register(selector, SelectionKey.OP_READ, attachments);
+                }
+                break;
+              default :
+                println("nessuna delle precedenti");
+                break;
+            }
 
           }
         }

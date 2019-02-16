@@ -65,6 +65,7 @@ public class Client
       int res = 0;
       ByteBuffer buffer2 = ByteBuffer.allocate(Long.BYTES);
       res = client.read(buffer2);
+
       int numFileBytes = Integer.valueOf(new String(buffer2.array(), 0, res, StandardCharsets.ISO_8859_1));
       System.out.println("[CLIENT] Received " + res + " bytes.");
       //Se il file esiste, ritorna il numero di bytes del file, altrimenti -1

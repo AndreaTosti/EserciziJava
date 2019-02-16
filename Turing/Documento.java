@@ -32,9 +32,9 @@ public class Documento
     return creatore;
   }
 
-  boolean isCollaboratore(String nome)
+  boolean isCollaboratore(Utente utente)
   {
-    return collaborators.containsKey(nome);
+    return collaborators.containsKey(utente.getNickname());
   }
 
   void addCollaboratore(Utente collaboratore)
