@@ -12,19 +12,13 @@ public class Documento
   private Utente creatore;
   private Map<String, Utente> collaborators;
 
-  Documento(String nome, int numSezioni, Utente creatore)
+  Documento(String nome, int numSezioni, Utente creatore, Sezione[] sezioni)
   {
     this.nome = nome;
     this.numSezioni = numSezioni;
     this.creatore = creatore;
-    this.sezioni = new Sezione[numSezioni];
+    this.sezioni = sezioni;
     this.collaborators = new HashMap<>();
-
-    for(int i = 0; i < numSezioni; i++)
-    {
-      this.sezioni[i] = new Sezione(nome + "_" + i, nome, i);
-    }
-
   }
 
   Utente getCreatore()

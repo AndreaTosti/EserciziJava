@@ -73,10 +73,21 @@ public class Client
 
   private static Op receiveOutcome(SocketChannel client)
   {
-    ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
-    int res;
+    ByteBuffer bufferDimensione = ByteBuffer.allocate(Long.BYTES);
+    int resD;
+
     try
     {
+      resD = client.read(bufferDimensione);
+      if(resD < 0)
+        return Op.ClosedConnection;
+
+      bufferDimensione.flip();
+      int dimensione = Integer.valueOf(new String(bufferDimensione.array(), 0,
+              resD, StandardCharsets.ISO_8859_1));
+
+      ByteBuffer buffer = ByteBuffer.allocate(dimensione);
+      int res;
       res = client.read(buffer);
       if(res < 0)
       {
@@ -340,9 +351,7 @@ public class Client
         int numeroSezione = Integer.valueOf(new String(bufferNumSezione.array(), 0,
                 resNe, StandardCharsets.ISO_8859_1));
 
-        println("NUMERO SEZIONE : " + numeroSezione);
-        //Decido di non allocare il buffer con dimensione pari a quella del file
-        ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
+        ByteBuffer buffer = ByteBuffer.allocate(dimensioneFile);
         //Per il testing in localhost, il nome della cartella conterrà anche
         //l'username per distinguerlo da altri client sullo stesso host
 
@@ -367,11 +376,12 @@ public class Client
                 StandardOpenOption.CREATE,
                 StandardOpenOption.TRUNCATE_EXISTING,
                 StandardOpenOption.WRITE));
-        res = 0;
+
         counter = 0;
         do
         {
           buffer.clear();
+
           res = client.read(buffer);
           if(res < 0)
           {
@@ -389,6 +399,7 @@ public class Client
           }
         }while(dimensioneFile > 0);
         fileChannel.close();
+        printErr("Ricevuti " + res + " bytes");
       }
     }
     catch(IOException e)
