@@ -312,9 +312,8 @@ public class Client
                                     String loggedInNickname)
   {
     ByteBuffer bufferNumSezioni = ByteBuffer.allocate(Long.BYTES);
-    ByteBuffer bufferDimensione = ByteBuffer.allocate(Long.BYTES);
-    ByteBuffer bufferNumSezione = ByteBuffer.allocate(Long.BYTES);
-    int resNi, resD, resNe, res, counter;
+
+    int resNi, resD, resNe, resS, res, counter;
     try
     {
       resNi = client.read(bufferNumSezioni);
@@ -331,8 +330,9 @@ public class Client
       for(int i = 0; i < numeroSezioni; i++)
       {
         //TODO: cambiare le seguenti due righe per riutilizzare i buffer
-        bufferDimensione = ByteBuffer.allocate(Long.BYTES);
-        bufferNumSezione = ByteBuffer.allocate(Long.BYTES);
+        ByteBuffer bufferDimensione = ByteBuffer.allocate(Long.BYTES);
+        ByteBuffer bufferNumSezione = ByteBuffer.allocate(Long.BYTES);
+        ByteBuffer bufferStato      = ByteBuffer.allocate(Long.BYTES);
 
         resD = client.read(bufferDimensione);
         if(resD < 0)
@@ -342,6 +342,9 @@ public class Client
         if(resNe < 0)
           return Op.ClosedConnection;
 
+        resS = client.read(bufferStato);
+        if(resS < 0)
+          return Op.ClosedConnection;
 
         bufferDimensione.flip();
         int dimensioneFile = Integer.valueOf(new String(bufferDimensione.array(), 0,
@@ -350,6 +353,10 @@ public class Client
         bufferNumSezione.flip();
         int numeroSezione = Integer.valueOf(new String(bufferNumSezione.array(), 0,
                 resNe, StandardCharsets.ISO_8859_1));
+
+        bufferStato.flip();
+        int stato = Integer.valueOf(new String(bufferStato.array(), 0,
+                resS, StandardCharsets.ISO_8859_1));
 
         ByteBuffer buffer = ByteBuffer.allocate(dimensioneFile);
         //Per il testing in localhost, il nome della cartella conterrà anche
@@ -400,6 +407,11 @@ public class Client
         }while(dimensioneFile > 0);
         fileChannel.close();
         printErr("Ricevuti " + res + " bytes");
+        printErr("La sezione " + nomeDocumento +
+                "_" + numeroSezione +
+                (stato == 1 ?
+                        " è attualmente sotto modifiche" :
+                        " non è attualmente sotto modifiche"));
       }
     }
     catch(IOException e)

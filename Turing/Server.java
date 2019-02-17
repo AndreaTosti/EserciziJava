@@ -754,6 +754,42 @@ public class Server
                 else
                 {
                   //Abbiamo inviato il numero identificativo di sezione
+                  //Invio lo stato di modifica sezione
+                  sezioni = (LinkedList<Sezione>) attachments.get(4);
+                  Sezione sezione = sezioni.element();
+                  long stato;
+                  if(sezione.getUserEditing() == null)
+                    stato = 0;
+                  else
+                    stato = 1;
+                  String numBytesStr = String.format("%0" + Long.BYTES + "d", stato);
+                  byte[] numBytes = numBytesStr.getBytes();
+                  buffer = ByteBuffer.wrap(numBytes);
+                  attachments.set(0, buffer.array().length);
+                  attachments.set(1, buffer);
+                  attachments.set(2, Step.SendingSectionStatus);
+                  attachments.set(3, buffer.array().length);
+                  attachments.set(4, sezioni); //Parametri
+                  channel.register(selector, SelectionKey.OP_WRITE, attachments);
+
+                }
+
+                break;
+
+              case SendingSectionStatus :
+                res = channel.write(buffer);
+                println("SendingSectionStatus Written " + res + " bytes");
+                if(res < remainingBytes)
+                {
+                  //Non abbiamo finito di mandare lo stato di modifica sezione
+                  remainingBytes -= res;
+                  attachments.set(0, remainingBytes);
+                  println("res: " + res);
+                  continue;
+                }
+                else
+                {
+                  //Abbiamo inviato lo stato di modifica sezione
                   //Invio la sezione
                   sezioni = (LinkedList<Sezione>) attachments.get(4);
                   Sezione sezione = sezioni.element();
@@ -784,7 +820,9 @@ public class Server
                   }
                 }
 
+
                 break;
+
               case SendingSection :
                 res = channel.write(buffer);
                 println("SendingSection Written " + res + " bytes");

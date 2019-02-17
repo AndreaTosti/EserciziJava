@@ -10,4 +10,6 @@ public enum Step
   SendingSection,            // Invio di una sezione
   SendingSectionSize,        // Invio dimensione di una sezione
   SendingSectionNumber,      // Invio numero identificativo di sezione
+  SendingSectionStatus,      // Invio un numero che è 1 se la sezione in quel
+                             // momento viene modificata, 0 altrimenti
 }
