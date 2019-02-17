@@ -6,5 +6,7 @@ public enum Step
   WaitingForMessage,         // Attesa ricezione messaggio
   SendingOutcome,            // Invio dell'esito
   SendingNumberOfSections,   // Invio del numero delle sezioni
-  SendingSections,           // Invio di una o più sezioni
+  SendingSection,            // Invio di una sezione
+  SendingSectionSize,        // Invio dimensione di una sezione
+  SendingSectionNumber,      // Invio numero identificativo di sezione
 }

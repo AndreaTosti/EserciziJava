@@ -22,7 +22,7 @@ public class Documento
 
     for(int i = 0; i < numSezioni; i++)
     {
-      this.sezioni[i] = new Sezione(nome + "_" + i);
+      this.sezioni[i] = new Sezione(nome + "_" + i, nome, i);
     }
 
   }

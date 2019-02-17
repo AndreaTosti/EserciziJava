@@ -9,6 +9,8 @@ public enum Op
   SuccessfullyShared,         // Condivisione documento avvenuta con successo
   SuccessfullyShown,          // Visualizzazione avvenuta con successo
   SuccessfullyRemovedSession, // Sessione rimossa con successo
+  SuccessfullyReceivedSections, // Tutte le sezioni richieste sono state ricevute
+                                // con successo
   WrongPassword,              // Password non corretta
   UserDoesNotExists,          // L'utente non esiste
   NicknameAlreadyExists,      // Esiste già l'utente
@@ -33,10 +35,12 @@ public enum Op
   MustBeInLoggedState,        // Bisogna essere nello stato Logged per eseguire
                               // il comando
   DocumentDoesNotExists,      // Il documento non esiste
+  SectionDoesNotExists,       // La sezione non esiste
   AlreadyCollaborates,        // L'utente già collabora alla modifica del
                               // documento
   CreatorCannotBeCollaborator,// Il creatore del documento non può essere
                               // collaboratore
+
 
 
   //---------------//,

@@ -1,18 +1,25 @@
 package Turing;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.EnumSet;
 import java.util.StringJoiner;
 import java.util.regex.Pattern;
 
@@ -23,7 +30,7 @@ public class Client
   private static int DEFAULT_RMI_PORT = 51812; //Porta RMI
   private static String DEFAULT_DELIMITER = "#";
   private static int DEFAULT_BUFFER_SIZE = 4096;
-  private static String DEFAULT_PARENT_FOLDER = "518111_ClientDirectories";
+  private static String DEFAULT_PARENT_FOLDER = "518111_ClientDirs";
 
   private static Pattern validPattern = Pattern.compile("[A-Za-z0-9_]+");
 
@@ -85,8 +92,6 @@ public class Client
     }
     catch(IOException e)
     {
-      //TODO: Qui il server potrebbe aver chiuso brutalmente il server
-      //      restituire ClosedConnection invece di stampare lo stacktrace
       e.printStackTrace();
       return Op.Error;
     }
@@ -292,33 +297,106 @@ public class Client
     return receiveOutcome(client);
   }
 
-  private static Op receiveSections(String[] splitted, SocketChannel client)
+  private static Op receiveSections(String[] splitted, SocketChannel client,
+                                    String loggedInNickname)
   {
-    //  TODO:
-    //      Se splitted.length è 3 allora devo scaricare una sezione
-    //      Se splitted.length è 2 allora devo scaricare tutte le sezioni
-    int numSezione;
-    if(splitted.length == 3)
+    ByteBuffer bufferNumSezioni = ByteBuffer.allocate(Long.BYTES);
+    ByteBuffer bufferDimensione = ByteBuffer.allocate(Long.BYTES);
+    ByteBuffer bufferNumSezione = ByteBuffer.allocate(Long.BYTES);
+    int resNi, resD, resNe, res, counter;
+    try
     {
-      //Ricevi una singola sezione
-      try
+      resNi = client.read(bufferNumSezioni);
+      if(resNi < 0)
+        return Op.ClosedConnection;
+
+      bufferNumSezioni.flip();
+      int numeroSezioni = Integer.valueOf(new String(bufferNumSezioni.array(), 0,
+              resNi, StandardCharsets.ISO_8859_1));
+
+
+      printErr("----NUMERO SEZIONI: " + numeroSezioni);
+
+      for(int i = 0; i < numeroSezioni; i++)
       {
-        numSezione = Integer.parseInt(splitted[2]);
-      }
-      catch(NumberFormatException e)
-      {
-        return Op.UsageError;
-      }
-      if(numSezione < 0)
-      {
-        return Op.UsageError;
+        //TODO: cambiare le seguenti due righe per riutilizzare i buffer
+        bufferDimensione = ByteBuffer.allocate(Long.BYTES);
+        bufferNumSezione = ByteBuffer.allocate(Long.BYTES);
+
+        resD = client.read(bufferDimensione);
+        if(resD < 0)
+          return Op.ClosedConnection;
+
+        resNe = client.read(bufferNumSezione);
+        if(resNe < 0)
+          return Op.ClosedConnection;
+
+
+        bufferDimensione.flip();
+        int dimensioneFile = Integer.valueOf(new String(bufferDimensione.array(), 0,
+                resD, StandardCharsets.ISO_8859_1));
+
+        bufferNumSezione.flip();
+        int numeroSezione = Integer.valueOf(new String(bufferNumSezione.array(), 0,
+                resNe, StandardCharsets.ISO_8859_1));
+
+        println("NUMERO SEZIONE : " + numeroSezione);
+        //Decido di non allocare il buffer con dimensione pari a quella del file
+        ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
+        //Per il testing in localhost, il nome della cartella conterrà anche
+        //l'username per distinguerlo da altri client sullo stesso host
+
+        //Si assume che il nomeSezione sia nome_numSezione
+        String nomeDocumento = splitted[1];
+        Path filePath = Paths.get(System.getProperty("user.dir") +
+                File.separator + DEFAULT_PARENT_FOLDER +
+                File.separator + loggedInNickname +
+                File.separator + nomeDocumento +
+                File.separator + nomeDocumento +
+                "_" + numeroSezione + ".txt");
+
+        Path directoryPath = Paths.get(System.getProperty("user.dir") +
+                File.separator + DEFAULT_PARENT_FOLDER +
+                File.separator + loggedInNickname +
+                File.separator + nomeDocumento);
+
+        if (!Files.exists(directoryPath))
+          Files.createDirectories(directoryPath);
+
+        FileChannel fileChannel = FileChannel.open(filePath, EnumSet.of(
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.WRITE));
+        res = 0;
+        counter = 0;
+        do
+        {
+          buffer.clear();
+          res = client.read(buffer);
+          if(res < 0)
+          {
+            return Op.ClosedConnection;
+          }
+          else
+          {
+            buffer.flip();
+            if(res > 0)
+            {
+              fileChannel.write(buffer);
+              counter += res;
+            }
+            dimensioneFile -= res;
+          }
+        }while(dimensioneFile > 0);
+        fileChannel.close();
       }
     }
-
-
-
-
-
+    catch(IOException e)
+    {
+      e.printStackTrace();
+      return Op.Error;
+    }
+    return Op.SuccessfullyReceivedSections;
   }
 
   public static void main(String[] args)
@@ -343,7 +421,7 @@ public class Client
     BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
     String stdin;
 
-    boolean loggedIn = false;
+    String loggedInNickname = null;
 
     try
     {
@@ -359,7 +437,7 @@ public class Client
         switch(splitted[0].toLowerCase())
         {
           case "register" :
-            if(loggedIn)
+            if(loggedInNickname != null)
             {
               printErr("Non puoi registrarti mentre sei loggato");
             }
@@ -374,14 +452,14 @@ public class Client
             result = handleLogin(splitted, client);
             println("Result = " + result);
             if(result == Op.SuccessfullyLoggedIn)
-              loggedIn = true;
+              loggedInNickname = splitted[1];
             break;
 
           case "logout" :
             result = handleLogout(client);
             println("Result = " + result);
             if(result == Op.SuccessfullyLoggedOut)
-              loggedIn = false;
+              loggedInNickname = null;
             break;
 
           case "create" :
@@ -399,7 +477,7 @@ public class Client
             println("Result = " + result);
             if(result == Op.SuccessfullyShown)
             {
-              result_2 = receiveSections(splitted, client);
+              result_2 = receiveSections(splitted, client, loggedInNickname);
               println("Result2 = " + result_2);
             }
 

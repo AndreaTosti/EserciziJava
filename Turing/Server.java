@@ -1,14 +1,13 @@
 package Turing;
 
+import com.sun.org.apache.bcel.internal.generic.Select;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -27,7 +26,7 @@ public class Server
   private static int DEFAULT_RMI_PORT = 51812; //Porta RMI
   private static int BUFFER_SIZE  = 4096; //Dimensione del buffer
   private static String DEFAULT_DELIMITER = "#";
-  private static String DEFAULT_PARENT_FOLDER = "518111_ServerDirectories";
+  private static String DEFAULT_PARENT_FOLDER = "518111_ServerDirs";
 
 
   //Utenti
@@ -161,7 +160,7 @@ public class Server
       for(Sezione sezione: sezioni)
       {
         Path filePath = Paths.get(DEFAULT_PARENT_FOLDER + File.separator +
-                nomeDocumento + File.separator + sezione.getNome() + ".txt");
+                nomeDocumento + File.separator + sezione.getNomeSezione() + ".txt");
         Files.createFile(filePath);
       }
     }
@@ -219,7 +218,7 @@ public class Server
   {
     String nomeDocumento = splitted[1];
 
-    int numSezione;
+    int numSezione = -1;
     if(splitted.length == 3)
     {
       try
@@ -253,6 +252,13 @@ public class Server
     if(!documento.getCreatore().equals(utente) &&
        !documento.isCollaboratore(utente))
       return Op.NotDocumentCreatorNorCollaborator;
+
+    if(numSezione != -1)
+    {
+      printErr("LENGTH: " + documento.getSezioni().length + " NUM SEZIONE: " + numSezione);
+      if(documento.getSezioni().length <= numSezione)
+        return Op.SectionDoesNotExists;
+    }
 
     return Op.SuccessfullyShown;
   }
@@ -515,15 +521,15 @@ public class Server
             //Nuovo evento in scrittura
             println("key.isWritable ");
 
-            int res;
             SocketChannel channel = (SocketChannel)key.channel();
             ArrayList<Object> attachments = (ArrayList) key.attachment();
             int remainingBytes = (int) attachments.get(0);
             ByteBuffer buffer = (ByteBuffer) attachments.get(1);
             Step step = (Step) attachments.get(2);
             int totalSize = (int) attachments.get(3);
-            String[] parameters = (String[]) attachments.get(4);
 
+            int res;
+            LinkedList<Sezione> sezioni;
 
             switch(step)
             {
@@ -542,67 +548,273 @@ public class Server
                 else
                 {
                   // Abbiamo inviato l'esito
-                  attachments.set(0, Long.BYTES); //Remaining Bytes
-                  attachments.set(1, ByteBuffer.allocate(Long.BYTES));
+                  String[] parameters = (String[]) attachments.get(4);
 
                   if(parameters != null)
                   {
                     Op requestedOperation = Op.valueOf(parameters[0]);
                     if(requestedOperation == Op.Show)
                     {
+                      //Devo inviare il numero di sezioni
+                      String nomeDocumento = parameters[1];
+                      Documento documento = documents.get(nomeDocumento);
+
+                      int numSezioni;
+
+                      if(parameters.length == 3)
+                      {
+                        //singola sezione
+                        int numSezione = Integer.parseInt(parameters[2]);
+                        Sezione sezione = documento.getSezioni()[numSezione];
+                        sezioni = new LinkedList<>();
+                        sezioni.add(sezione);
+                        numSezioni = 1;
+                      }
+                      else if(parameters.length == 2)
+                      {
+                        //tutte le sezioni
+                        Sezione[] arraySezioni = documento.getSezioni();
+                        sezioni = new LinkedList<>(Arrays.asList(arraySezioni));
+                        numSezioni = arraySezioni.length;
+                      }
+                      else
+                      {
+                        sezioni = null;
+                        numSezioni = -1;
+                      }
+
+                      String numBytesStr = String.format("%0" + Long.BYTES + "d", numSezioni);
+                      byte[] numBytes = numBytesStr.getBytes();
+                      buffer = ByteBuffer.wrap(numBytes);
+                      attachments.set(0, buffer.array().length);
+                      attachments.set(1, buffer);
                       attachments.set(2, Step.SendingNumberOfSections);
+                      attachments.set(3, buffer.array().length);
+                      attachments.set(4, sezioni); //Parametri
                       channel.register(selector, SelectionKey.OP_WRITE, attachments);
                     }
                   }
                   else
                   {
                     // torno nello stato WaitingForMessageSize
+                    attachments.set(0, Long.BYTES); //Remaining Bytes
+                    attachments.set(1, ByteBuffer.allocate(Long.BYTES));
                     attachments.set(2, Step.WaitingForMessageSize);
+                    attachments.set(3, Long.BYTES); //Total Size
+                    attachments.set(4, null); //Parametri
                     channel.register(selector, SelectionKey.OP_READ, attachments);
                   }
 
 
-                  attachments.set(3, Long.BYTES); //Total Size
                 }
                 break;
 
               case SendingNumberOfSections :
-
-                String nomeDocumento = parameters[1];
-                Documento documento = documents.get(nomeDocumento);
-                Sezione[] sezioni;
-                int numSezioni;
-
-                if(parameters.length == 3)
+                res = channel.write(buffer);
+                println("Written " + res + " bytes");
+                if(res < remainingBytes)
                 {
-                  //singola sezione
-                  int numSezione = Integer.parseInt(parameters[2]);
-                  Sezione sezione = documento.getSezioni()[numSezione];
-                  sezioni = new Sezione[]{sezione};
-                  numSezioni = 1;
-                }
-                else if(parameters.length == 2)
-                {
-                  //tutte le sezioni
-                  sezioni = documento.getSezioni();
-                  numSezioni = documento.getSezioni().length;
+                  //Non abbiamo finito di mandare il numero di sezioni
+                  remainingBytes -= res;
+                  attachments.set(0, remainingBytes);
+                  println("res: " + res);
+                  continue;
                 }
                 else
                 {
-                  sezioni = null;
-                  numSezioni = -1;
+                  //Abbiamo inviato il numero di sezioni
+                  //Prelevo una sezione dalla lista e
+                  //invio la dimensione di questa
+                  sezioni = (LinkedList<Sezione>) attachments.get(4);
+                  Sezione sezione = sezioni.peek();
+                  Path filePath = Paths.get(DEFAULT_PARENT_FOLDER + File.separator +
+                          sezione.getNomeDocumento() + File.separator +
+                          sezione.getNomeSezione() + ".txt");
+                  try
+                  {
+                    if(Files.notExists(filePath))
+                    {
+                      //FIXME: la sezione non esiste nella directory
+                      //       creo un file vuoto e lo invio lo stesso
+                      printErr("Filename " + sezione.getNomeSezione() + ".txt" +
+                              " does not exists in the current working directory: " +
+                              System.getProperty("user.dir"));
+                      //Creo un file vuoto
+                      Files.createFile(filePath);
+                    }
+                    FileChannel fileChannel = FileChannel.open(filePath);
+                    long dimensioneFile = fileChannel.size();
+                    String numBytesStr = String.format("%0" + Long.BYTES + "d", dimensioneFile);
+                    byte[] numBytes = numBytesStr.getBytes();
+                    buffer = ByteBuffer.wrap(numBytes);
+                    attachments.set(0, buffer.array().length);
+                    attachments.set(1, buffer);
+                    attachments.set(2, Step.SendingSectionSize);
+                    attachments.set(3, buffer.array().length);
+                    attachments.set(4, sezioni); //Parametri
+                    channel.register(selector, SelectionKey.OP_WRITE, attachments);
+                    fileChannel.close();
+                  }
+                  catch(IOException e)
+                  {
+                    e.printStackTrace();
+                  }
                 }
-                //Invio il numero di sezioni
-                String numBytesStr = String.format("%0" + Long.BYTES + "d", numSezioni);
-                byte[] numBytes = numBytesStr.getBytes();
-                buffer = ByteBuffer.wrap(numBytes);
-                attachments.set(0, buffer.array().length);
-                attachments.set(1, buffer);
-                attachments.set(2, Step.SendingSections);
-                attachments.set(3, buffer.array().length);
-                attachments.set(4, sezioni); //Parametri
                 break;
 
+              case SendingSectionSize :
+                res = channel.write(buffer);
+                println("Written " + res + " bytes");
+                if(res < remainingBytes)
+                {
+                  //Non abbiamo finito di mandare la dimensione della sezione
+                  remainingBytes -= res;
+                  attachments.set(0, remainingBytes);
+                  println("res: " + res);
+                  continue;
+                }
+                else
+                {
+                  //Abbiamo inviato la dimensione della sezione
+                  //Invio il numero identificativo della sezione
+                  sezioni = (LinkedList<Sezione>) attachments.get(4);
+                  Sezione sezione = sezioni.peek();
+                  Path filePath = Paths.get(DEFAULT_PARENT_FOLDER + File.separator +
+                          sezione.getNomeDocumento() + File.separator +
+                          sezione.getNomeSezione() + ".txt");
+                  try
+                  {
+                    FileChannel fileChannel = FileChannel.open(filePath);
+                    long numeroSezione = sezione.getNumeroSezione();
+                    String numBytesStr = String.format("%0" + Long.BYTES + "d", numeroSezione);
+                    byte[] numBytes = numBytesStr.getBytes();
+                    buffer = ByteBuffer.wrap(numBytes);
+                    attachments.set(0, buffer.array().length);
+                    attachments.set(1, buffer);
+                    attachments.set(2, Step.SendingSectionNumber);
+                    attachments.set(3, buffer.array().length);
+                    attachments.set(4, sezioni); //Parametri
+                    channel.register(selector, SelectionKey.OP_WRITE, attachments);
+                    fileChannel.close();
+                  }
+                  catch(IOException e)
+                  {
+                    e.printStackTrace();
+                  }
+                }
+                break;
+
+              case SendingSectionNumber :
+                res = channel.write(buffer);
+                println("Written " + res + " bytes");
+                if(res < remainingBytes)
+                {
+                  //Non abbiamo finito di mandare il numero identificativo di sezione
+                  remainingBytes -= res;
+                  attachments.set(0, remainingBytes);
+                  println("res: " + res);
+                  continue;
+                }
+                else
+                {
+                  //Abbiamo inviato il numero identificativo di sezione
+                  //Invio la sezione
+                  sezioni = (LinkedList<Sezione>) attachments.get(4);
+                  Sezione sezione = sezioni.poll();
+                  Path filePath = Paths.get(DEFAULT_PARENT_FOLDER + File.separator +
+                          sezione.getNomeDocumento() + File.separator +
+                          sezione.getNomeSezione() + ".txt");
+                  try
+                  {
+                    FileChannel fileChannel = FileChannel.open(filePath);
+                    long dimensioneFile = fileChannel.size();
+                    //Decido di bufferizzare l'intero file
+                    buffer = ByteBuffer.allocate(Math.toIntExact(dimensioneFile));
+                    //Il buffer è sufficientemente grande per contenere l'intero file
+                    println("LETTI DAL FILE " + fileChannel.read(buffer) + " bytes");
+                    buffer.flip();
+                    attachments.set(0, buffer.array().length);
+                    attachments.set(1, buffer);
+                    attachments.set(2, Step.SendingSection);
+                    attachments.set(3, buffer.array().length);
+                    attachments.set(4, sezioni); //Parametri
+                    channel.register(selector, SelectionKey.OP_WRITE, attachments);
+                    fileChannel.close();
+                  }
+                  catch(IOException e)
+                  {
+                    e.printStackTrace();
+                  }
+                }
+
+                break;
+              case SendingSection :
+                res = channel.write(buffer);
+                println("Written " + res + " bytes");
+                if(res < remainingBytes)
+                {
+                  //Non abbiamo finito di mandare la sezione
+                  remainingBytes -= res;
+                  attachments.set(0, remainingBytes);
+                  println("res: " + res);
+                  continue;
+                }
+                else
+                {
+                  //Abbiamo inviato l'intera sezione
+                  //Vedo se bisogna o meno inviare un'altra sezione
+                  sezioni = (LinkedList<Sezione>) attachments.get(4);
+                  Sezione sezione = sezioni.peek();
+                  if(sezione != null)
+                  {
+                    //Bisogna inviare un'altra sezione
+                    //Prelevo una sezione dalla lista e
+                    //invio la dimensione di questa
+                    Path filePath = Paths.get(DEFAULT_PARENT_FOLDER + File.separator +
+                            sezione.getNomeDocumento() + File.separator +
+                            sezione.getNomeSezione() + ".txt");
+                    try
+                    {
+                      if(Files.notExists(filePath))
+                      {
+                        //FIXME: la sezione non esiste nella directory
+                        //       creo un file vuoto e lo invio lo stesso
+                        printErr("Filename " + sezione.getNomeSezione() + ".txt" +
+                                " does not exists in the current working directory: " +
+                                System.getProperty("user.dir"));
+                        //Creo un file vuoto
+                        Files.createFile(filePath);
+                      }
+                      FileChannel fileChannel = FileChannel.open(filePath);
+                      long dimensioneFile = fileChannel.size();
+                      String numBytesStr = String.format("%0" + Long.BYTES + "d", dimensioneFile);
+                      byte[] numBytes = numBytesStr.getBytes();
+                      buffer = ByteBuffer.wrap(numBytes);
+                      attachments.set(0, buffer.array().length);
+                      attachments.set(1, buffer);
+                      attachments.set(2, Step.SendingSectionSize);
+                      attachments.set(3, buffer.array().length);
+                      attachments.set(4, sezioni); //Parametri
+                      channel.register(selector, SelectionKey.OP_WRITE, attachments);
+                      fileChannel.close();
+                    }
+                    catch(IOException e)
+                    {
+                      e.printStackTrace();
+                    }
+                  }
+                  else
+                  {
+                    // ho finito di inviare sezioni,
+                    // torno nello stato WaitingForMessageSize
+                    attachments.set(0, Long.BYTES); //Remaining Bytes
+                    attachments.set(1, ByteBuffer.allocate(Long.BYTES));
+                    attachments.set(2, Step.WaitingForMessageSize);
+                    attachments.set(3, Long.BYTES); //Total Size
+                    attachments.set(4, null); //Parametri
+                    channel.register(selector, SelectionKey.OP_READ, attachments);
+                  }
+                }
               default :
                 println("nessuna delle precedenti");
                 break;

@@ -3,12 +3,16 @@ package Turing;
 class Sezione
 {
   private Utente editingUser;
-  private String nome;
+  private String nomeSezione;
+  private long  numeroSezione;
+  private String nomeDocumento;
 
-  Sezione(String nome)
+  Sezione(String nomeSezione, String nomeDocumento, long numeroSezione)
   {
     this.editingUser = null;
-    this.nome = nome;
+    this.nomeSezione = nomeSezione;
+    this.nomeDocumento = nomeDocumento;
+    this.numeroSezione = numeroSezione;
   }
 
   Utente getUserEditing()
@@ -26,9 +30,18 @@ class Sezione
     editingUser = null;
   }
 
-  String getNome()
+  String getNomeSezione()
   {
-    return nome;
+    return nomeSezione;
   }
 
+  String getNomeDocumento()
+  {
+    return nomeDocumento;
+  }
+
+  long getNumeroSezione()
+  {
+    return numeroSezione;
+  }
 }
