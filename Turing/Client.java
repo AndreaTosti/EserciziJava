@@ -324,12 +324,11 @@ public class Client
       int numeroSezioni = Integer.valueOf(new String(bufferNumSezioni.array(), 0,
               resNi, StandardCharsets.ISO_8859_1));
 
-
       printErr("----NUMERO SEZIONI: " + numeroSezioni);
 
       for(int i = 0; i < numeroSezioni; i++)
       {
-        //TODO: cambiare le seguenti due righe per riutilizzare i buffer
+        //TODO: cambiare le seguenti tre righe per riutilizzare i buffer
         ByteBuffer bufferDimensione = ByteBuffer.allocate(Long.BYTES);
         ByteBuffer bufferNumSezione = ByteBuffer.allocate(Long.BYTES);
         ByteBuffer bufferStato      = ByteBuffer.allocate(Long.BYTES);
@@ -385,10 +384,11 @@ public class Client
                 StandardOpenOption.WRITE));
 
         counter = 0;
-        do
+        res = 0;
+        while(dimensioneFile > 0)
         {
           buffer.clear();
-
+          printErr("DA RICEVERE " + dimensioneFile + " bytes");
           res = client.read(buffer);
           if(res < 0)
           {
@@ -404,14 +404,13 @@ public class Client
             }
             dimensioneFile -= res;
           }
-        }while(dimensioneFile > 0);
+        }
         fileChannel.close();
         printErr("Ricevuti " + res + " bytes");
-        printErr("La sezione " + nomeDocumento +
-                "_" + numeroSezione +
+        printErr("La sezione " + nomeDocumento + "_" + numeroSezione +
                 (stato == 1 ?
-                        " è attualmente sotto modifiche" :
-                        " non è attualmente sotto modifiche"));
+                              " è attualmente sotto modifiche" :
+                              " non è attualmente sotto modifiche"));
       }
     }
     catch(IOException e)
@@ -500,6 +499,7 @@ public class Client
             println("Result = " + result);
             if(result == Op.SuccessfullyShown)
             {
+              assert(client != null);
               result_2 = receiveSections(splitted, client, loggedInNickname);
               println("Result2 = " + result_2);
             }

@@ -4,7 +4,7 @@ package Turing;
 import java.util.HashMap;
 import java.util.Map;
 
-public class Documento
+class Documento
 {
   private String nome;
   private Sezione[] sezioni;
