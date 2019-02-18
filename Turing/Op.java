@@ -9,11 +9,13 @@ public enum Op
   SuccessfullyShared,         // Condivisione documento avvenuta con successo
   SuccessfullyShown,          // Visualizzazione avvenuta con successo
   SuccessfullyRemovedSession, // Sessione rimossa con successo
-  SuccessfullyReceivedSections, // Tutte le sezioni richieste sono state ricevute
-                                // con successo
+  SuccessfullyReceivedSections,// Tutte le sezioni richieste sono state ricevute
+                               // con successo
   SuccessfullyReceivedList,   // Lista ricevuta con successo
   SuccessfullyListed,         // Lista visualizzata con successo
   SuccessfullyStartedEditing, // Inizio editing sezione avvenuto con successo
+  SuccessfullyEndedEditing,   // Fine editing sezione avvenuto con successo
+  SuccessfullySentSection,    // Invio sezione avvenuta con successo
   WrongPassword,              // Password non corretta
   UserDoesNotExists,          // L'utente non esiste
   NicknameAlreadyExists,      // Esiste già l'utente
@@ -32,6 +34,8 @@ public enum Op
   List,                       // Operazione di visualizzazione lista documenti
                               // con relativi creatori e collaboratori
   Edit,                       // Operazione di richiesta modifica di una sezione
+  EndEdit,                    // Operazione di richiesta fine modifica di una
+                              // sezione
   Error,                      // Errore non ben specificato
   UsageError,                 // Passaggio parametri sbagliato
   ClosedConnection,           // Il server non È più raggiungibile
@@ -40,6 +44,8 @@ public enum Op
   CannotLogout,               // L'utente è nello stato Started o Editing
   SuccessfullySent,           // Richiesta inviata con successo
   MustBeInLoggedState,        // Bisogna essere nello stato Logged per eseguire
+                              // il comando
+  MustBeInEditingState,       // Bisogna essere nello stato Editing per eseguire
                               // il comando
   DocumentDoesNotExists,      // Il documento non esiste
   SectionDoesNotExists,       // La sezione non esiste

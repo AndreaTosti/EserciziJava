@@ -540,6 +540,103 @@ public class Client
 
   }
 
+  private static Op handleEndEdit(String[] splitted, SocketChannel client)
+  {
+    //Controllo il numero di parametri
+    if(splitted.length != 3)
+    {
+      printErr("Usage: end-edit <doc> <sec>");
+      return Op.UsageError;
+    }
+
+    String nomeDocumento = splitted[1];
+
+    if(!isAValidString((nomeDocumento)))
+    {
+      printErr("Usage: end-edit <doc> <sec>");
+      return Op.UsageError;
+    }
+
+    int numSezione;
+    try
+    {
+      numSezione = Integer.parseInt(splitted[2]);
+    }
+    catch(NumberFormatException e)
+    {
+      printErr("Usage: end-edit <doc> <sec>");
+      return Op.UsageError;
+    }
+    if(numSezione < 0)
+    {
+      printErr("Usage: end-edit <doc> <sec>");
+      return Op.UsageError;
+    }
+
+    //Richiesta fine modifica di una sezione
+    //end-edit#nomedocumento#numsezione
+
+    StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
+    joiner.add(Op.EndEdit.toString()).add(nomeDocumento).add(splitted[2]);
+
+    Op result = sendRequest(joiner.toString(), client);
+    println(result);
+
+    return receiveOutcome(client);
+  }
+
+  private static Op sendSection(String[] splitted, SocketChannel client,
+                                String loggedInNickname)
+  {
+    String nomeDocumento = splitted[1];
+    int numSezione = Integer.parseInt(splitted[2]);
+    Path filePath = Paths.get(System.getProperty("user.dir") +
+            File.separator + DEFAULT_PARENT_FOLDER +
+            File.separator + loggedInNickname +
+            File.separator + nomeDocumento +
+            File.separator + nomeDocumento +
+            "_" + numSezione + ".txt");
+    try
+    {
+      if(Files.notExists(filePath))
+      {
+        //FIXME: la sezione non esiste nella directory
+        //       creo un file vuoto e lo invio lo stesso
+        printErr("Filename " + nomeDocumento +
+                "_" + numSezione + ".txt" +
+                " does not exists in the current working directory: " +
+                System.getProperty("user.dir"));
+        //Creo un file vuoto
+        Files.createFile(filePath);
+      }
+      FileChannel fileChannel = FileChannel.open(filePath);
+
+      long dimensioneFile = fileChannel.size();
+      String numBytesStr = String.format("%0" + Long.BYTES + "d", dimensioneFile);
+      byte[] numBytes = numBytesStr.getBytes();
+      ByteBuffer bufferDimensione = ByteBuffer.wrap(numBytes);
+
+      //Decido di bufferizzare l'intero file
+      ByteBuffer buffer = ByteBuffer.allocate(Math.toIntExact(dimensioneFile));
+      while(buffer.hasRemaining())
+        fileChannel.read(buffer);
+      //FIXME: Non si sa se sia indispensabile più di una lettura.
+
+      fileChannel.close();
+
+      buffer.flip();
+
+      printErr("Written " + client.write(bufferDimensione) + " bytes");
+      printErr("Written " + client.write(buffer) + " bytes");
+      return Op.SuccessfullySentSection;
+    }
+    catch(IOException e)
+    {
+      e.printStackTrace();
+      return Op.Error;
+    }
+  }
+
   public static void main(String[] args)
   {
     SocketAddress address = new InetSocketAddress(DEFAULT_HOST, DEFAULT_PORT);
@@ -644,7 +741,17 @@ public class Client
               result_2 = receiveSections(splitted, client, loggedInNickname);
               println("Result2 = " + result_2);
             }
+            break;
 
+          case "end-edit" :
+            result = handleEndEdit(splitted, client);
+            println("Result = " + result);
+            if(result == Op.SuccessfullyEndedEditing)
+            {
+              assert(client != null);
+              result_2 = sendSection(splitted, client, loggedInNickname);
+              println("Result2 = " + result_2);
+            }
             break;
 
           default:

@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.rmi.registry.Registry;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.ExportException;
@@ -342,7 +343,58 @@ public class Server
     return Op.SuccessfullyStartedEditing;
   }
 
-  //Metodo costruttore
+  private static Op handleEndEdit(String[] splitted, SocketChannel channel)
+  {
+    String nomeDocumento = splitted[1];
+    int numSezione = -1;
+    try
+    {
+      numSezione = Integer.parseInt(splitted[2]);
+    }
+    catch(NumberFormatException e)
+    {
+      return Op.Error;
+    }
+
+    Sessione sessione = sessions.get(channel);
+
+    if(sessione == null)
+      return Op.UnknownSession;
+
+    if(sessione.getStato() == Sessione.Stato.Started ||
+       sessione.getStato() == Sessione.Stato.Logged)
+      return Op.MustBeInEditingState;
+
+    Utente utente = sessione.getUtente();
+
+    if(utente == null)
+      return Op.UserDoesNotExists;
+
+    Documento documento = documents.get(nomeDocumento);
+    if(documento == null)
+      return Op.DocumentDoesNotExists;
+
+    if(!documento.getCreatore().equals(utente) &&
+            !documento.isCollaboratore((utente)))
+      return Op.NotDocumentCreatorNorCollaborator;
+
+
+    if(numSezione != -1)
+    {
+      if(documento.getSezioni().length <= numSezione)
+        return Op.SectionDoesNotExists;
+    }
+
+    Sezione sezione = documento.getSezioni()[numSezione];
+    if(!sezione.getUserEditing().equals(utente))
+      return Op.Error;
+
+    sezione.endEdit();
+    sessione.setStato(Sessione.Stato.Logged);
+
+    return Op.SuccessfullyEndedEditing;
+  }
+
   public static void main(String[] args)
   {
     //Porta su cui il server si mette in ascolto
@@ -503,7 +555,7 @@ public class Server
                     attachments.setParameters(null);
                     attachments.setList(null);
                     //FIXME: Aggiunta -> da controllare se funziona
-                    //channel.register(selector, SelectionKey.OP_READ, attachments);
+                    channel.register(selector, SelectionKey.OP_READ, attachments);
                   }
                 }
                 break;
@@ -573,6 +625,10 @@ public class Server
                           result = handleEdit(splitted, channel);
                           break;
 
+                        case EndEdit :
+                          result = handleEndEdit(splitted, channel);
+                          break;
+
                         default:
                           result = Op.UsageError;
                           break;
@@ -606,6 +662,107 @@ public class Server
                 }
 
                 break;
+
+              case GettingSectionSize :
+                res = channel.read(buffer);
+                printErr("Read " + res + " bytes");
+
+                if(res < 0)
+                {
+                  handleClosedConnection(channel);
+                }
+                else
+                {
+                  if(res < remainingBytes)
+                  {
+                    //Non abbiamo ancora tutta la dimensione della sezione
+                    remainingBytes -= res;
+                    attachments.setRemainingBytes(remainingBytes);
+                    println("res: " + res);
+                    continue;
+                  }
+                  else
+                  {
+                    //Abbiamo la dimensione della sezione nel buffer
+                    //Ora bisogna scaricare la sezione
+                    buffer.flip();
+                    int sectionSize = Integer.valueOf(new String(buffer.array(),
+                            0, Long.BYTES, StandardCharsets.ISO_8859_1));
+                    println("Section size: " + sectionSize);
+                    attachments.setRemainingBytes(sectionSize);
+                    attachments.setBuffer(ByteBuffer.allocate(sectionSize));
+                    attachments.setStep(Step.GettingSection);
+                    attachments.setTotalSize(sectionSize);
+                    attachments.setParameters(parameters); //Propagare i parametri
+                    attachments.setList(null);
+                    //FIXME: Aggiunta -> da controllare se funziona
+                    channel.register(selector, SelectionKey.OP_READ, attachments);
+                  }
+                }
+                break;
+
+              case GettingSection :
+                try
+                {
+                  res = channel.read(buffer);
+                  println("Read " + res + " bytes");
+
+                  if(res < 0)
+                  {
+                    handleClosedConnection(channel);
+                  }
+                  else
+                  {
+                    if(res < remainingBytes)
+                    {
+                      //Non abbiamo ancora ricevuto la sezione per intero
+                      remainingBytes -= res;
+                      attachments.setRemainingBytes(remainingBytes);
+                      println("res: " + res);
+                      continue;
+                    }
+                    else
+                    {
+                      //Abbiamo la sezione
+                      buffer.flip();
+                      String nomeDocumento = parameters[1];
+                      Documento documento = documents.get(nomeDocumento);
+                      int numSezione = Integer.parseInt(parameters[2]);
+                      Sezione sezione = documento.getSezioni()[numSezione];
+
+                      Path filePath = Paths.get(DEFAULT_PARENT_FOLDER + File.separator +
+                              sezione.getNomeDocumento() + File.separator +
+                              sezione.getNomeSezione() + ".txt");
+                      FileChannel fileChannel = FileChannel.open(filePath, EnumSet.of(
+                              StandardOpenOption.CREATE,
+                              StandardOpenOption.TRUNCATE_EXISTING,
+                              StandardOpenOption.WRITE));
+
+                      while(buffer.hasRemaining())
+                        fileChannel.write(buffer);
+                      //FIXME: Non si sa se sia indispensabile più di una scrittura.
+
+                      //Abbiamo memorizzato la sezione
+                      //torno nello stato WaitingForMessageSize
+                      attachments.setRemainingBytes(Long.BYTES);
+                      attachments.setBuffer(ByteBuffer.allocate(Long.BYTES));
+                      attachments.setStep(Step.WaitingForMessageSize);
+                      attachments.setTotalSize(Long.BYTES);
+                      attachments.setParameters(null);
+                      attachments.setSections(null);
+                      attachments.setList(null);
+
+                      channel.register(selector, SelectionKey.OP_READ, attachments);
+                    }
+                  }
+                }
+                catch(IOException e)
+                {
+                  e.printStackTrace();
+                }
+
+                break;
+
               default :
                 println("nessuna delle precedenti");
                 break;
@@ -802,6 +959,20 @@ public class Server
 
                     channel.register(selector, SelectionKey.OP_WRITE, attachments);
                   }
+                  else if(requestedOperation == Op.EndEdit && result == Op.SuccessfullyEndedEditing)
+                  {
+                    //Devo ricevere una sezione, sia la dimensione che la sezione stessa
+                    // vado nello stato gettingSectionSize
+                    attachments.setRemainingBytes(Long.BYTES);
+                    attachments.setBuffer(ByteBuffer.allocate(Long.BYTES));
+                    attachments.setStep(Step.GettingSectionSize);
+                    attachments.setTotalSize(Long.BYTES);
+                    attachments.setParameters(parameters);  //PROPAGARE I PARAMETRI
+                    attachments.setSections(null);
+                    attachments.setList(null);
+
+                    channel.register(selector, SelectionKey.OP_READ, attachments);
+                  }
                   else
                   {
                     // torno nello stato WaitingForMessageSize
@@ -984,13 +1155,9 @@ public class Server
                     //Decido di bufferizzare l'intero file
                     buffer = ByteBuffer.allocate(Math.toIntExact(dimensioneFile));
 
-                    fileChannel.read(buffer);
+                    while(buffer.hasRemaining())
+                      fileChannel.read(buffer);
                     //FIXME: Non si sa se sia indispensabile più di una lettura.
-//                    while(numBytesRead != dimensioneFile)
-//                    {
-//                      println("LETTI " + numBytesRead);
-//                      numBytesRead += fileChannel.read(buffer);
-//                    }
 
                     buffer.flip();
 

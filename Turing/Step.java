@@ -14,4 +14,6 @@ public enum Step
                              // momento viene modificata, 0 altrimenti
   SendingListSize,           // Invio dimensione della lista
   SendingList,               // Invio della lista
+  GettingSectionSize,        // Ricezione della dimensione di una sezione
+  GettingSection,            // Ricezione di una sezione
 }
