@@ -290,6 +290,57 @@ public class Server
     return Op.SuccessfullyListed;
   }
 
+  private static Op handleEdit(String[] splitted, SocketChannel channel)
+  {
+    String nomeDocumento = splitted[1];
+    int numSezione = -1;
+    try
+    {
+      numSezione = Integer.parseInt(splitted[2]);
+    }
+    catch(NumberFormatException e)
+    {
+      return Op.UsageError;
+    }
+
+    Sessione sessione = sessions.get(channel);
+
+    if(sessione == null)
+      return Op.UnknownSession;
+
+    if(sessione.getStato() == Sessione.Stato.Started ||
+       sessione.getStato() == Sessione.Stato.Editing)
+      return Op.MustBeInLoggedState;
+
+    Utente utente = sessione.getUtente();
+
+    if(utente == null)
+      return Op.UserDoesNotExists;
+
+    Documento documento = documents.get(nomeDocumento);
+    if(documento == null)
+      return Op.DocumentDoesNotExists;
+
+    if(!documento.getCreatore().equals(utente) &&
+       !documento.isCollaboratore((utente)))
+      return Op.NotDocumentCreatorNorCollaborator;
+
+
+    if(numSezione != -1)
+    {
+      if(documento.getSezioni().length <= numSezione)
+        return Op.SectionDoesNotExists;
+    }
+
+    Sezione sezione = documento.getSezioni()[numSezione];
+    if(sezione.getUserEditing() != null)
+      return Op.SectionUnderModification;
+
+    sezione.edit(utente);
+    sessione.setStato(Sessione.Stato.Editing);
+
+    return Op.SuccessfullyStartedEditing;
+  }
 
   //Metodo costruttore
   public static void main(String[] args)
@@ -518,6 +569,10 @@ public class Server
                           result = handleList(channel);
                           break;
 
+                        case Edit :
+                          result = handleEdit(splitted, channel);
+                          break;
+
                         default:
                           result = Op.UsageError;
                           break;
@@ -720,6 +775,30 @@ public class Server
                     attachments.setTotalSize(buffer.array().length);
                     attachments.setParameters(null);
                     attachments.setList(joiner.toString());
+
+                    channel.register(selector, SelectionKey.OP_WRITE, attachments);
+                  }
+                  else if(requestedOperation == Op.Edit && result == Op.SuccessfullyStartedEditing)
+                  {
+                    //Devo inviare una sezione, quindi sia la dimensione che la sezione stessa
+                    String nomeDocumento = parameters[1];
+                    Documento documento = documents.get(nomeDocumento);
+                    int numSezione = Integer.parseInt(parameters[2]);
+                    Sezione sezione = documento.getSezioni()[numSezione];
+                    LinkedList<Sezione> sezioni_ = new LinkedList<>();
+                    sezioni_.add(sezione);
+                    attachments.setSections(sezioni_);
+
+                    int numSezioni = 1;
+                    String numBytesStr = String.format("%0" + Long.BYTES + "d", numSezioni);
+                    byte[] numBytes = numBytesStr.getBytes();
+                    buffer = ByteBuffer.wrap(numBytes);
+                    attachments.setRemainingBytes(buffer.array().length);
+                    attachments.setBuffer(buffer);
+                    attachments.setStep(Step.SendingNumberOfSections);
+                    attachments.setTotalSize(buffer.array().length);
+                    attachments.setParameters(null);
+                    attachments.setList(null);
 
                     channel.register(selector, SelectionKey.OP_WRITE, attachments);
                   }

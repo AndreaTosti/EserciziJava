@@ -494,6 +494,52 @@ public class Client
     }
   }
 
+  private static Op handleEdit(String[] splitted, SocketChannel client)
+  {
+    //Controllo il numero di parametri
+    if(splitted.length != 3)
+    {
+      printErr("Usage: edit <doc> <sec>");
+      return Op.UsageError;
+    }
+
+    String nomeDocumento = splitted[1];
+
+    if(!isAValidString(nomeDocumento))
+    {
+      printErr("Usage: edit <doc> <sec>");
+      return Op.UsageError;
+    }
+
+    int numSezione;
+    try
+    {
+      numSezione = Integer.parseInt(splitted[2]);
+    }
+    catch(NumberFormatException e)
+    {
+      printErr("Usage: edit <doc> <sec>");
+      return Op.UsageError;
+    }
+    if(numSezione < 0)
+    {
+      printErr("Usage: edit <doc> <sec>");
+      return Op.UsageError;
+    }
+
+    //Richiesta modifica di una sezione
+    //edit#nomedocumento#numsezione
+
+    StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
+    joiner.add(Op.Edit.toString()).add(nomeDocumento).add(splitted[2]);
+
+    Op result = sendRequest(joiner.toString(), client);
+    println(result);
+
+    return receiveOutcome(client);
+
+  }
+
   public static void main(String[] args)
   {
     SocketAddress address = new InetSocketAddress(DEFAULT_HOST, DEFAULT_PORT);
@@ -587,6 +633,18 @@ public class Client
               result_2 = receiveList(client);
               println("Result2 = " + result_2);
             }
+            break;
+
+          case "edit" :
+            result = handleEdit(splitted, client);
+            println("Result = " + result);
+            if(result == Op.SuccessfullyStartedEditing)
+            {
+              assert(client != null);
+              result_2 = receiveSections(splitted, client, loggedInNickname);
+              println("Result2 = " + result_2);
+            }
+
             break;
 
           default:

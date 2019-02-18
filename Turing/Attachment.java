@@ -86,12 +86,12 @@ class Attachment
     this.sections = sections;
   }
 
-  public String getList()
+  String getList()
   {
     return list;
   }
 
-  public void setList(String list)
+  void setList(String list)
   {
     this.list = list;
   }

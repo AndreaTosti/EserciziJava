@@ -13,6 +13,7 @@ public enum Op
                                 // con successo
   SuccessfullyReceivedList,   // Lista ricevuta con successo
   SuccessfullyListed,         // Lista visualizzata con successo
+  SuccessfullyStartedEditing, // Inizio editing sezione avvenuto con successo
   WrongPassword,              // Password non corretta
   UserDoesNotExists,          // L'utente non esiste
   NicknameAlreadyExists,      // Esiste già l'utente
@@ -21,6 +22,7 @@ public enum Op
   NotDocumentCreator,         // L'utente non è il creatore del documento
   NotDocumentCreatorNorCollaborator, // L'utente non è né il creatore del
                                      // documento, né un collaboratore
+  SectionUnderModification,   // La sezione è attualmente sotto modifica
   Login,                      // Operazione di Login TCP
   Logout,                     // Operazione di Logout TCP
   Create,                     // Operazione di creazione di un documento
@@ -29,6 +31,7 @@ public enum Op
                               // o dell'intero documento
   List,                       // Operazione di visualizzazione lista documenti
                               // con relativi creatori e collaboratori
+  Edit,                       // Operazione di richiesta modifica di una sezione
   Error,                      // Errore non ben specificato
   UsageError,                 // Passaggio parametri sbagliato
   ClosedConnection,           // Il server non È più raggiungibile
