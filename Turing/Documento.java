@@ -41,4 +41,14 @@ class Documento
     return sezioni;
   }
 
+  String getNome()
+  {
+    return nome;
+  }
+
+  Map<String, Utente> getCollaborators()
+  {
+    return collaborators;
+  }
+
 }

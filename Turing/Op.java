@@ -11,6 +11,8 @@ public enum Op
   SuccessfullyRemovedSession, // Sessione rimossa con successo
   SuccessfullyReceivedSections, // Tutte le sezioni richieste sono state ricevute
                                 // con successo
+  SuccessfullyReceivedList,   // Lista ricevuta con successo
+  SuccessfullyListed,         // Lista visualizzata con successo
   WrongPassword,              // Password non corretta
   UserDoesNotExists,          // L'utente non esiste
   NicknameAlreadyExists,      // Esiste già l'utente
@@ -25,6 +27,8 @@ public enum Op
   Share,                      // Operazione di condivisione di un documento
   Show,                       // Operazione di visualizzazione di una sezione
                               // o dell'intero documento
+  List,                       // Operazione di visualizzazione lista documenti
+                              // con relativi creatori e collaboratori
   Error,                      // Errore non ben specificato
   UsageError,                 // Passaggio parametri sbagliato
   ClosedConnection,           // Il server non È più raggiungibile

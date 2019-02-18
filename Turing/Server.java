@@ -1,7 +1,6 @@
 package Turing;
 
-import com.sun.org.apache.bcel.internal.generic.Select;
-
+import javax.print.Doc;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -26,6 +25,7 @@ public class Server
   private static int DEFAULT_RMI_PORT = 51812; //Porta RMI
   private static int BUFFER_SIZE  = 4096; //Dimensione del buffer
   private static String DEFAULT_DELIMITER = "#";
+  private static String DEFAULT_INTERIOR_DELIMITER = ":";
   private static String DEFAULT_PARENT_FOLDER = "518111_ServerDirs";
 
 
@@ -272,6 +272,24 @@ public class Server
     return Op.SuccessfullyShown;
   }
 
+  private static Op handleList(SocketChannel channel)
+  {
+    Sessione sessione = sessions.get(channel);
+    if(sessione == null)
+      return Op.UnknownSession;
+
+    if(sessione.getStato() == Sessione.Stato.Started ||
+       sessione.getStato() == Sessione.Stato.Editing)
+      return Op.MustBeInLoggedState;
+
+    Utente utente = sessione.getUtente();
+
+    if(utente == null)
+      return Op.UserDoesNotExists;
+
+    return Op.SuccessfullyListed;
+  }
+
 
   //Metodo costruttore
   public static void main(String[] args)
@@ -373,6 +391,7 @@ public class Server
                     Step.WaitingForMessageSize,
                     Long.BYTES,
                     null,
+                    null,
                     null
             );
 
@@ -394,6 +413,7 @@ public class Server
             Step step              =  attachments.getStep();
             int totalSize          =  attachments.getTotalSize();
             String[] parameters    =  attachments.getParameters();
+            String list            =  attachments.getList();
 
             int res;
 
@@ -430,6 +450,7 @@ public class Server
                     attachments.setStep(Step.WaitingForMessage);
                     attachments.setTotalSize(messageSize);
                     attachments.setParameters(null);
+                    attachments.setList(null);
                     //FIXME: Aggiunta -> da controllare se funziona
                     //channel.register(selector, SelectionKey.OP_READ, attachments);
                   }
@@ -473,24 +494,28 @@ public class Server
                       printErr(toSplit);
                       switch(requestedOperation)
                       {
-                        case Login:
+                        case Login :
                           result = handleLogin(splitted, channel);
                           break;
 
-                        case Logout:
+                        case Logout :
                           result = handleLogout(channel);
                           break;
 
-                        case Create:
+                        case Create :
                           result = handleCreate(splitted, channel);
                           break;
 
-                        case Share:
+                        case Share :
                           result = handleShare(splitted, channel);
                           break;
 
-                        case Show:
+                        case Show :
                           result = handleShow(splitted, channel);
+                          break;
+
+                        case List :
+                          result = handleList(channel);
                           break;
 
                         default:
@@ -525,7 +550,6 @@ public class Server
                   e.printStackTrace();
                 }
 
-
                 break;
               default :
                 println("nessuna delle precedenti");
@@ -544,6 +568,7 @@ public class Server
             ByteBuffer buffer      =  attachments.getBuffer();
             Step step              =  attachments.getStep();
             int totalSize          =  attachments.getTotalSize();
+            String list            =  attachments.getList();
 
             int res;
             LinkedList<Sezione> sezioni;
@@ -635,6 +660,66 @@ public class Server
                     attachments.setStep(Step.SendingNumberOfSections);
                     attachments.setTotalSize(buffer.array().length);
                     attachments.setParameters(null);
+                    attachments.setList(null);
+
+                    channel.register(selector, SelectionKey.OP_WRITE, attachments);
+                  }
+                  else if(requestedOperation == Op.List && result == Op.SuccessfullyListed)
+                  {
+                    //Devo inviare la lista dei documenti in cui collabora e quelli creati
+                    //LIST TCP
+                    //documentoX:creatoreX:collaboratore1_X: ... : collaboratoreN_X#
+                    //documentoY:creatoreY:collaboratore1_Y: ... : collaboratoreM_Y#
+                    // ...
+                    //documentoZ:creatoreZ:collaboratore1_Z: ... : collaboratoreK_Z
+
+                    Sessione sessione = sessions.get(channel);
+                    Utente utente = sessione.getUtente();
+
+                    StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
+
+                    for(Documento documento : documents.values())
+                    {
+                      if(documento.getCreatore().equals(utente))
+                      {
+                        //È creatore di quel documento
+                        StringJoiner interiorJoiner = new StringJoiner(DEFAULT_INTERIOR_DELIMITER);
+                        interiorJoiner.add(documento.getNome()).add(utente.getNickname());
+                        for(Utente collaboratore : documento.getCollaborators().values())
+                        {
+                          interiorJoiner.add(collaboratore.getNickname());
+                        }
+                        joiner.add(interiorJoiner.toString());
+                      }
+                      else
+                      {
+                        for(Utente collaboratore : documento.getCollaborators().values())
+                        {
+                          if(collaboratore.equals(utente))
+                          {
+                            //è collaboratore di quel documento
+                            StringJoiner interiorJoiner = new StringJoiner(DEFAULT_INTERIOR_DELIMITER);
+                            interiorJoiner.add(documento.getNome()).add(documento.getCreatore().getNickname());
+                            for(Utente collaboratore_ : documento.getCollaborators().values())
+                            {
+                              interiorJoiner.add(collaboratore_.getNickname());
+                            }
+                            joiner.add(interiorJoiner.toString());
+                          }
+                        }
+                      }
+                    }
+
+                    byte[] listBytes = joiner.toString().getBytes(StandardCharsets.ISO_8859_1);
+                    String numBytesStr = String.format("%0" + Long.BYTES + "d", listBytes.length);
+                    byte[] numBytes = numBytesStr.getBytes();
+                    buffer = ByteBuffer.wrap(numBytes);
+                    attachments.setRemainingBytes(buffer.array().length);
+                    attachments.setBuffer(buffer);
+                    attachments.setStep(Step.SendingListSize);
+                    attachments.setTotalSize(buffer.array().length);
+                    attachments.setParameters(null);
+                    attachments.setList(joiner.toString());
 
                     channel.register(selector, SelectionKey.OP_WRITE, attachments);
                   }
@@ -647,6 +732,8 @@ public class Server
                     attachments.setTotalSize(Long.BYTES);
                     attachments.setParameters(null);
                     attachments.setSections(null);
+                    attachments.setList(null);
+
                     channel.register(selector, SelectionKey.OP_READ, attachments);
                   }
                 }
@@ -914,11 +1001,72 @@ public class Server
                     attachments.setStep(Step.WaitingForMessageSize);
                     attachments.setTotalSize(Long.BYTES);
                     attachments.setSections(null);
+                    attachments.setList(null);
 
                     channel.register(selector, SelectionKey.OP_READ, attachments);
                   }
                 }
                 break;
+
+              case SendingListSize :
+                res = channel.write(buffer);
+                println("SendingListSize Written " + res + " bytes");
+
+                if(res < remainingBytes)
+                {
+                  //Non abbiamo finito di mandare la dimensione della lista
+                  remainingBytes -= res;
+                  attachments.setRemainingBytes(remainingBytes);
+                  println("res: " + res);
+                  continue;
+                }
+                else
+                {
+                  //Abbiamo inviato la dimensione della lista
+                  //Invio la lista
+                  list = attachments.getList();
+                  byte[] listBytes = list.getBytes(StandardCharsets.ISO_8859_1);
+                  buffer = ByteBuffer.wrap(listBytes);
+
+                  attachments.setRemainingBytes(buffer.array().length);
+                  attachments.setBuffer(buffer);
+                  attachments.setStep(Step.SendingList);
+                  attachments.setTotalSize(buffer.array().length);
+                  attachments.setSections(null);
+                  attachments.setList(null);
+
+                  channel.register(selector, SelectionKey.OP_WRITE, attachments);
+                }
+                break;
+
+
+              case SendingList :
+                res = channel.write(buffer);
+                println("SendingList Written " + res + " bytes");
+
+                if(res < remainingBytes)
+                {
+                  //Non abbiamo finito di mandare la lista
+                  remainingBytes -= res;
+                  attachments.setRemainingBytes(remainingBytes);
+                  println("res: " + res);
+                  continue;
+                }
+                else
+                {
+                  //Abbiamo inviato la lista
+                  //torno nello stato WaitingForMessageSize
+                  attachments.setRemainingBytes(Long.BYTES);
+                  attachments.setBuffer(ByteBuffer.allocate(Long.BYTES));
+                  attachments.setStep(Step.WaitingForMessageSize);
+                  attachments.setTotalSize(Long.BYTES);
+                  attachments.setSections(null);
+                  attachments.setList(null);
+
+                  channel.register(selector, SelectionKey.OP_READ, attachments);
+                }
+                break;
+
               default :
                 println("nessuna delle precedenti(write)");
                 break;

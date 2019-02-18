@@ -29,6 +29,7 @@ public class Client
   private static int DEFAULT_PORT = 51811; //Porta di Default
   private static int DEFAULT_RMI_PORT = 51812; //Porta RMI
   private static String DEFAULT_DELIMITER = "#";
+  private static String DEFAULT_INTERIOR_DELIMITER = ":";
   private static int DEFAULT_BUFFER_SIZE = 4096;
   private static String DEFAULT_PARENT_FOLDER = "518111_ClientDirs";
 
@@ -161,6 +162,7 @@ public class Client
     //login#username#password
     StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
     joiner.add(Op.Login.toString()).add(username).add(password);
+    println("FORMATO: " + joiner);
     Op resultSend = sendRequest(joiner.toString(), client);
     println(resultSend);
 
@@ -421,6 +423,77 @@ public class Client
     return Op.SuccessfullyReceivedSections;
   }
 
+  private static Op handleList(SocketChannel client)
+  {
+    //LIST TCP
+    //list
+
+    StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
+    joiner.add(Op.List.toString());
+    Op result = sendRequest(joiner.toString(), client);
+    println(result);
+
+    return receiveOutcome(client);
+  }
+
+  private static Op receiveList(SocketChannel client)
+  {
+    ByteBuffer bufferDimensione = ByteBuffer.allocate(Long.BYTES);
+    int resD, res;
+
+    try
+    {
+      resD = client.read(bufferDimensione);
+      if(resD < 0)
+        return Op.ClosedConnection;
+
+      bufferDimensione.flip();
+      int dimensione = Integer.valueOf(new String(bufferDimensione.array(), 0,
+              resD, StandardCharsets.ISO_8859_1));
+
+      ByteBuffer buffer = ByteBuffer.allocate(dimensione);
+      res = client.read(buffer);
+      if(res != dimensione)
+        return Op.Error;
+
+      buffer.flip();
+      String toSplit = new String(buffer.array(), 0,
+              dimensione, StandardCharsets.ISO_8859_1);
+      String[] splittedDocs = toSplit.split(DEFAULT_DELIMITER);
+
+      StringBuilder builder = new StringBuilder();
+      for(String documento : splittedDocs)
+      {
+        if(documento.equals(""))
+          continue;
+        String[] splitted = documento.split(DEFAULT_INTERIOR_DELIMITER);
+        builder.append("\n\t\t");
+        builder.append(splitted[0]);
+        builder.append(":");
+        builder.append("\n\t\t\tCreatore: ");
+        builder.append(splitted[1]);
+        builder.append("\n\t\t\tCollaboratori: ");
+        for(int i = 2; i < splitted.length; i++)
+        {
+          builder.append(splitted[i]);
+          builder.append(" ");
+        }
+      }
+
+      String result = builder.toString();
+      if(result.equals(""))
+        println("Non ci sono documenti di cui si è creatori o di cui si collabora");
+      else
+        println(builder.toString());
+      return Op.SuccessfullyReceivedList;
+    }
+    catch(IOException e)
+    {
+      e.printStackTrace();
+      return Op.Error;
+    }
+  }
+
   public static void main(String[] args)
   {
     SocketAddress address = new InetSocketAddress(DEFAULT_HOST, DEFAULT_PORT);
@@ -503,7 +576,17 @@ public class Client
               result_2 = receiveSections(splitted, client, loggedInNickname);
               println("Result2 = " + result_2);
             }
+            break;
 
+          case "list" :
+            result = handleList(client);
+            println("Result = " + result);
+            if(result == Op.SuccessfullyListed)
+            {
+              assert(client != null);
+              result_2 = receiveList(client);
+              println("Result2 = " + result_2);
+            }
             break;
 
           default:

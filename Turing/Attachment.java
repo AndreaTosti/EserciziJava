@@ -11,10 +11,11 @@ class Attachment
   private int totalSize;
   private String[] parameters;
   private LinkedList<Sezione> sections;
+  private String list;
 
   Attachment(int remainingBytes, ByteBuffer buffer, Step step,
              int totalSize, String[] parameters,
-             LinkedList<Sezione> sections)
+             LinkedList<Sezione> sections, String list)
   {
     this.remainingBytes = remainingBytes;
     this.buffer = buffer;
@@ -22,6 +23,7 @@ class Attachment
     this.totalSize = totalSize;
     this.parameters = parameters;
     this.sections = sections;
+    this.list = list;
   }
 
   int getRemainingBytes()
@@ -82,5 +84,15 @@ class Attachment
   void setSections(LinkedList<Sezione> sections)
   {
     this.sections = sections;
+  }
+
+  public String getList()
+  {
+    return list;
+  }
+
+  public void setList(String list)
+  {
+    this.list = list;
   }
 }
