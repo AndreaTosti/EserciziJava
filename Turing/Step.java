@@ -6,6 +6,7 @@ public enum Step
   WaitingForMessage,         // Attesa ricezione messaggio
   SendingOutcome,            // Invio dell'esito
   SendingOutcomeSize,        // Invio dimensione dell'esito
+  SendingMulticastAddress,   // Invio indirizzo multicast
   SendingNumberOfSections,   // Invio del numero delle sezioni
   SendingSection,            // Invio di una sezione
   SendingSectionSize,        // Invio dimensione di una sezione

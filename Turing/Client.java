@@ -4,12 +4,11 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.ConnectException;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,9 +18,12 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.text.SimpleDateFormat;
 import java.util.EnumSet;
+import java.util.Locale;
 import java.util.StringJoiner;
 import java.util.regex.Pattern;
+import java.util.Date;
 
 public class Client
 {
@@ -32,6 +34,12 @@ public class Client
   private static String DEFAULT_INTERIOR_DELIMITER = ":";
   private static int DEFAULT_BUFFER_SIZE = 4096;
   private static String DEFAULT_PARENT_FOLDER = "518111_ClientDirs";
+  private static InetAddress TEST_MULTICAST_ADDRESS;
+
+  //TODO: Multicast
+  private static MulticastSocket ms = null;
+
+
 
   private static Pattern validPattern = Pattern.compile("[A-Za-z0-9_]+");
 
@@ -315,7 +323,7 @@ public class Client
   {
     ByteBuffer bufferNumSezioni = ByteBuffer.allocate(Long.BYTES);
 
-    int resNi, resD, resNe, resS, res, counter;
+    int resNi, resD, resNe, resI, resS, res, counter;
     try
     {
       resNi = client.read(bufferNumSezioni);
@@ -333,6 +341,7 @@ public class Client
         //TODO: cambiare le seguenti tre righe per riutilizzare i buffer
         ByteBuffer bufferDimensione = ByteBuffer.allocate(Long.BYTES);
         ByteBuffer bufferNumSezione = ByteBuffer.allocate(Long.BYTES);
+        ByteBuffer bufferIndirizzoMulticast = ByteBuffer.allocate(Long.BYTES);
         ByteBuffer bufferStato      = ByteBuffer.allocate(Long.BYTES);
 
         resD = client.read(bufferDimensione);
@@ -341,6 +350,10 @@ public class Client
 
         resNe = client.read(bufferNumSezione);
         if(resNe < 0)
+          return Op.ClosedConnection;
+
+        resI = client.read(bufferIndirizzoMulticast);
+        if(resI < 0)
           return Op.ClosedConnection;
 
         resS = client.read(bufferStato);
@@ -354,6 +367,44 @@ public class Client
         bufferNumSezione.flip();
         int numeroSezione = Integer.valueOf(new String(bufferNumSezione.array(), 0,
                 resNe, StandardCharsets.ISO_8859_1));
+
+        //TODO: da testare
+        bufferIndirizzoMulticast.flip();
+
+        long longIP = bufferIndirizzoMulticast.getLong();
+
+        /*
+         *  Trasforma IP da Long
+         *  https://stackoverflow.com/a/53105157
+         */
+        StringBuilder sb = new StringBuilder(15);
+        for (int j = 0; j < 4; j++)
+        {
+          sb.insert(0,Long.toString(longIP & 0xff));
+          if (j < 3) {
+            sb.insert(0,'.');
+          }
+          longIP = longIP >> 8;
+        }
+        try
+        {
+          InetAddress indirizzoMulticast =
+                  InetAddress.getByName(sb.toString());
+        }catch(UnknownHostException e1)
+        {
+          e1.printStackTrace();
+        }
+
+        try
+        {
+          TEST_MULTICAST_ADDRESS = InetAddress.getByName(sb.toString());
+        }catch(UnknownHostException e)
+        {
+          e.printStackTrace();
+        }
+
+//        ms.joinGroup(TEST_MULTICAST_ADDRESS);
+
 
         bufferStato.flip();
         int stato = Integer.valueOf(new String(bufferStato.array(), 0,
@@ -637,6 +688,61 @@ public class Client
     }
   }
 
+  private static Op handleSend(String[] splitted, SocketChannel client,
+                               String loggedInNickname)
+  {
+    //Controllo il numero di parametri
+    if(splitted.length != 2)
+    {
+      printErr("Usage: send <msg>");
+      return Op.UsageError;
+    }
+
+    String messaggio = splitted[1];
+
+    StringBuilder builder = new StringBuilder();
+    builder.append(new SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.ITALY).format(new Date()));
+    builder.append(" ");
+    builder.append(loggedInNickname);
+    builder.append(": ");
+    builder.append(messaggio);
+
+    DatagramPacket packetToSend = new DatagramPacket(
+            builder.toString().getBytes(StandardCharsets.UTF_8),
+            builder.toString().getBytes(StandardCharsets.UTF_8).length,
+            TEST_MULTICAST_ADDRESS, DEFAULT_PORT);
+    try
+    {
+      ms.send(packetToSend);
+    }catch(IOException e)
+    {
+      e.printStackTrace();
+      return Op.Error;
+    }
+
+    return Op.SuccessfullySentMessage;
+  }
+
+  private static Op handleReceive(SocketChannel client)
+  {
+    byte[] buffer = new byte[DEFAULT_BUFFER_SIZE];
+    DatagramPacket packetToReceive = new DatagramPacket(buffer, buffer.length);
+    try
+    {
+      ms.receive(packetToReceive);
+    }catch(IOException e)
+    {
+      e.printStackTrace();
+      return Op.Error;
+    }
+
+    String s = new String(packetToReceive.getData(), 0,
+            packetToReceive.getLength(), StandardCharsets.UTF_8);
+    println("RECEIVED MESSAGE: " + s);
+
+    return Op.SuccessfullyReceivedMessage;
+  }
+
   public static void main(String[] args)
   {
     SocketAddress address = new InetSocketAddress(DEFAULT_HOST, DEFAULT_PORT);
@@ -654,6 +760,19 @@ public class Client
     catch(IOException e2)
     {
       e2.printStackTrace();
+    }
+
+    //TODO: Multicast
+
+    try
+    {
+      ms = new MulticastSocket(DEFAULT_PORT);
+      ms.setSoTimeout(1);
+      ms.joinGroup(InetAddress.getByName("239.1.10.1"));
+    }
+    catch(IOException e)
+    {
+      e.printStackTrace();
     }
 
     BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
@@ -752,6 +871,17 @@ public class Client
               result_2 = sendSection(splitted, client, loggedInNickname);
               println("Result2 = " + result_2);
             }
+            break;
+
+          case "send" :
+            splitted = stdin.split("\\s+", 2);
+            result = handleSend(splitted, client, loggedInNickname);
+            println("Result = " + result);
+            break;
+
+          case "receive" :
+            result = handleReceive(client);
+            println("Result = " + result);
             break;
 
           default:

@@ -3,9 +3,9 @@ package Turing;
 import javax.print.Doc;
 import java.io.File;
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
+import java.net.*;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -29,6 +29,17 @@ public class Server
   private static String DEFAULT_INTERIOR_DELIMITER = ":";
   private static String DEFAULT_PARENT_FOLDER = "518111_ServerDirs";
 
+  private static InetAddress TEST_MULTICAST_ADDRESS;
+  static
+  {
+    try
+    {
+      TEST_MULTICAST_ADDRESS = InetAddress.getByName("239.1.10.1");
+    }catch(UnknownHostException e)
+    {
+      e.printStackTrace();
+    }
+  }
 
   //Utenti
   private static final ConcurrentMap<String, Utente> users = new ConcurrentHashMap<>();
@@ -451,6 +462,12 @@ public class Server
       serverChannel.configureBlocking(false);
       selector = Selector.open();
       serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+
+      MulticastSocket ms = new MulticastSocket();
+      ms.setTimeToLive((byte) 64);
+      ms.joinGroup(TEST_MULTICAST_ADDRESS);
+
+
     }
     catch(IOException e)
     {
@@ -1105,6 +1122,55 @@ public class Server
                 else
                 {
                   //Abbiamo inviato il numero identificativo di sezione
+                  //Invia l'indirizzo Multicast
+
+                  sezioni = attachments.getSections();
+
+                  //FIXME: IP dinamici
+                  String[] ipAddressInArray = "239.1.10.1".split("\\.");
+
+                  /*
+                   *  Trasforma IP a Long
+                   *  https://stackoverflow.com/a/53105157
+                   */
+
+                  long longIP = 0;
+                  for (int i = 0; i < ipAddressInArray.length; i++) {
+
+                    int power = 3 - i;
+                    int ip = Integer.parseInt(ipAddressInArray[i]);
+                    longIP += ip * Math.pow(256, power);
+                  }
+                  buffer = ByteBuffer.allocate(Long.BYTES);
+                  buffer.putLong(longIP);
+                  buffer.flip();
+
+                  attachments.setRemainingBytes(buffer.array().length);
+                  attachments.setBuffer(buffer);
+                  attachments.setStep(Step.SendingMulticastAddress);
+                  attachments.setTotalSize(buffer.array().length);
+                  attachments.setSections(sezioni);
+
+                  channel.register(selector, SelectionKey.OP_WRITE, attachments);
+                }
+
+                break;
+
+              case SendingMulticastAddress :
+                res = channel.write(buffer);
+                println("SendingMulticastAddress Written " + res + " bytes");
+
+                if(res < remainingBytes)
+                {
+                  //Non abbiamo finito di mandare l'indirizzo Multicast
+                  remainingBytes -= res;
+                  attachments.setRemainingBytes(remainingBytes);
+                  println("res: " + res);
+                  continue;
+                }
+                else
+                {
+                  //Abbiamo inviato l'indirizzo Multicast
                   //Invio lo stato di modifica sezione
                   sezioni = attachments.getSections();
                   Sezione sezione = sezioni.element();
@@ -1124,7 +1190,6 @@ public class Server
 
                   channel.register(selector, SelectionKey.OP_WRITE, attachments);
                 }
-
                 break;
 
               case SendingSectionStatus :
