@@ -19,6 +19,7 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.IntStream;
 
 public class Server
 {
@@ -28,18 +29,6 @@ public class Server
   private static String DEFAULT_DELIMITER = "#";
   private static String DEFAULT_INTERIOR_DELIMITER = ":";
   private static String DEFAULT_PARENT_FOLDER = "518111_ServerDirs";
-
-  private static InetAddress TEST_MULTICAST_ADDRESS;
-  static
-  {
-    try
-    {
-      TEST_MULTICAST_ADDRESS = InetAddress.getByName("239.1.10.1");
-    }catch(UnknownHostException e)
-    {
-      e.printStackTrace();
-    }
-  }
 
   //Utenti
   private static final ConcurrentMap<String, Utente> users = new ConcurrentHashMap<>();
@@ -462,12 +451,6 @@ public class Server
       serverChannel.configureBlocking(false);
       selector = Selector.open();
       serverChannel.register(selector, SelectionKey.OP_ACCEPT);
-
-      MulticastSocket ms = new MulticastSocket();
-      ms.setTimeToLive((byte) 64);
-      ms.joinGroup(TEST_MULTICAST_ADDRESS);
-
-
     }
     catch(IOException e)
     {
@@ -957,6 +940,40 @@ public class Server
                     //Devo inviare una sezione, quindi sia la dimensione che la sezione stessa
                     String nomeDocumento = parameters[1];
                     Documento documento = documents.get(nomeDocumento);
+
+                    if(documento.getMulticastAddress() == null)
+                    {
+                      //Indirizzo per reti private (Local-Scope Organization)
+                      //239.0.0.0/8
+                      boolean generateAnotherIP;
+                      Long generatedIP;
+                      do
+                      {
+                        int[] ipAddressInArray = new Random().ints(3,
+                                0, 255).toArray();
+                        //Trasforma IP a Long https://stackoverflow.com/a/53105157
+                        long longIP = 0;
+                        longIP += 239 * Math.pow(256, 3);
+                        for (int i = 1; i <= 3; i++)
+                        {
+                          int power = 3 - i;
+                          int ip = ipAddressInArray[i - 1];
+                          longIP += ip * Math.pow(256, power);
+                        }
+                        generatedIP = longIP;
+                        generateAnotherIP = false;
+                        for(Documento doc : documents.values())
+                        {
+                          if(doc.getMulticastAddress() != null)
+                          {
+                            if(doc.getMulticastAddress().equals(generatedIP))
+                              generateAnotherIP = true;
+                          }
+                        }
+                      }while(generateAnotherIP);
+                      documento.setMulticastAddress(generatedIP);
+                    }
+
                     int numSezione = Integer.parseInt(parameters[2]);
                     Sezione sezione = documento.getSezioni()[numSezione];
                     LinkedList<Sezione> sezioni_ = new LinkedList<>();
@@ -1125,24 +1142,12 @@ public class Server
                   //Invia l'indirizzo Multicast
 
                   sezioni = attachments.getSections();
-
-                  //FIXME: IP dinamici
-                  String[] ipAddressInArray = "239.1.10.1".split("\\.");
-
-                  /*
-                   *  Trasforma IP a Long
-                   *  https://stackoverflow.com/a/53105157
-                   */
-
-                  long longIP = 0;
-                  for (int i = 0; i < ipAddressInArray.length; i++) {
-
-                    int power = 3 - i;
-                    int ip = Integer.parseInt(ipAddressInArray[i]);
-                    longIP += ip * Math.pow(256, power);
-                  }
+                  Sezione sezione = sezioni.element();
+                  String nomeDocumento = sezione.getNomeDocumento();
+                  Documento documento = documents.get(nomeDocumento);
+                  Long multicastAddress = documento.getMulticastAddress();
                   buffer = ByteBuffer.allocate(Long.BYTES);
-                  buffer.putLong(longIP);
+                  buffer.putLong(multicastAddress);
                   buffer.flip();
 
                   attachments.setRemainingBytes(buffer.array().length);

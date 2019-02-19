@@ -11,6 +11,7 @@ class Documento
   private int numSezioni;
   private Utente creatore;
   private Map<String, Utente> collaborators;
+  private Long multicastAddress;
 
   Documento(String nome, int numSezioni, Utente creatore, Sezione[] sezioni)
   {
@@ -51,4 +52,13 @@ class Documento
     return collaborators;
   }
 
+  Long getMulticastAddress()
+  {
+    return multicastAddress;
+  }
+
+  public void setMulticastAddress(Long multicastAddress)
+  {
+    this.multicastAddress = multicastAddress;
+  }
 }

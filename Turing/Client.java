@@ -8,7 +8,6 @@ import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SocketChannel;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -34,12 +33,6 @@ public class Client
   private static String DEFAULT_INTERIOR_DELIMITER = ":";
   private static int DEFAULT_BUFFER_SIZE = 4096;
   private static String DEFAULT_PARENT_FOLDER = "518111_ClientDirs";
-  private static InetAddress TEST_MULTICAST_ADDRESS;
-
-  //TODO: Multicast
-  private static MulticastSocket ms = null;
-
-
 
   private static Pattern validPattern = Pattern.compile("[A-Za-z0-9_]+");
 
@@ -319,7 +312,7 @@ public class Client
   }
 
   private static Op receiveSections(String[] splitted, SocketChannel client,
-                                    String loggedInNickname)
+                                    String loggedInNickname, EditingRoom editingRoom)
   {
     ByteBuffer bufferNumSezioni = ByteBuffer.allocate(Long.BYTES);
 
@@ -368,43 +361,26 @@ public class Client
         int numeroSezione = Integer.valueOf(new String(bufferNumSezione.array(), 0,
                 resNe, StandardCharsets.ISO_8859_1));
 
-        //TODO: da testare
-        bufferIndirizzoMulticast.flip();
-
-        long longIP = bufferIndirizzoMulticast.getLong();
-
-        /*
-         *  Trasforma IP da Long
-         *  https://stackoverflow.com/a/53105157
-         */
-        StringBuilder sb = new StringBuilder(15);
-        for (int j = 0; j < 4; j++)
+        if(editingRoom.isEditing())
         {
-          sb.insert(0,Long.toString(longIP & 0xff));
-          if (j < 3) {
-            sb.insert(0,'.');
+          bufferIndirizzoMulticast.flip();
+          long longIP = bufferIndirizzoMulticast.getLong();
+          /*
+           *  Trasforma IP da Long
+           *  https://stackoverflow.com/a/53105157
+           */
+          StringBuilder sb = new StringBuilder(15);
+          for (int j = 0; j < 4; j++)
+          {
+            sb.insert(0,Long.toString(longIP & 0xff));
+            if (j < 3) {
+              sb.insert(0,'.');
+            }
+            longIP = longIP >> 8;
           }
-          longIP = longIP >> 8;
+          printErr("VERRA' UTILIZZATO L'IP " + sb.toString());
+          editingRoom.setMulticastAddress(sb.toString());
         }
-        try
-        {
-          InetAddress indirizzoMulticast =
-                  InetAddress.getByName(sb.toString());
-        }catch(UnknownHostException e1)
-        {
-          e1.printStackTrace();
-        }
-
-        try
-        {
-          TEST_MULTICAST_ADDRESS = InetAddress.getByName(sb.toString());
-        }catch(UnknownHostException e)
-        {
-          e.printStackTrace();
-        }
-
-//        ms.joinGroup(TEST_MULTICAST_ADDRESS);
-
 
         bufferStato.flip();
         int stato = Integer.valueOf(new String(bufferStato.array(), 0,
@@ -689,7 +665,7 @@ public class Client
   }
 
   private static Op handleSend(String[] splitted, SocketChannel client,
-                               String loggedInNickname)
+                               String loggedInNickname, EditingRoom editingRoom)
   {
     //Controllo il numero di parametri
     if(splitted.length != 2)
@@ -697,6 +673,9 @@ public class Client
       printErr("Usage: send <msg>");
       return Op.UsageError;
     }
+
+    if(!editingRoom.isEditing())
+      return Op.MustBeInEditingState;
 
     String messaggio = splitted[1];
 
@@ -710,10 +689,10 @@ public class Client
     DatagramPacket packetToSend = new DatagramPacket(
             builder.toString().getBytes(StandardCharsets.UTF_8),
             builder.toString().getBytes(StandardCharsets.UTF_8).length,
-            TEST_MULTICAST_ADDRESS, DEFAULT_PORT);
+            editingRoom.getInetMulticastAddress(), DEFAULT_PORT);
     try
     {
-      ms.send(packetToSend);
+      editingRoom.getMulticastSocket().send(packetToSend);
     }catch(IOException e)
     {
       e.printStackTrace();
@@ -723,13 +702,16 @@ public class Client
     return Op.SuccessfullySentMessage;
   }
 
-  private static Op handleReceive(SocketChannel client)
+  private static Op handleReceive(SocketChannel client, EditingRoom editingRoom)
   {
+    if(!editingRoom.isEditing())
+      return Op.MustBeInEditingState;
+
     byte[] buffer = new byte[DEFAULT_BUFFER_SIZE];
     DatagramPacket packetToReceive = new DatagramPacket(buffer, buffer.length);
     try
     {
-      ms.receive(packetToReceive);
+      editingRoom.getMulticastSocket().receive(packetToReceive);
     }catch(IOException e)
     {
       e.printStackTrace();
@@ -745,6 +727,7 @@ public class Client
 
   public static void main(String[] args)
   {
+
     SocketAddress address = new InetSocketAddress(DEFAULT_HOST, DEFAULT_PORT);
     SocketChannel client = null;
     try
@@ -762,18 +745,7 @@ public class Client
       e2.printStackTrace();
     }
 
-    //TODO: Multicast
-
-    try
-    {
-      ms = new MulticastSocket(DEFAULT_PORT);
-      ms.setSoTimeout(1);
-      ms.joinGroup(InetAddress.getByName("239.1.10.1"));
-    }
-    catch(IOException e)
-    {
-      e.printStackTrace();
-    }
+    EditingRoom editingRoom = new EditingRoom(false, null, DEFAULT_PORT);
 
     BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
     String stdin;
@@ -835,7 +807,7 @@ public class Client
             if(result == Op.SuccessfullyShown)
             {
               assert(client != null);
-              result_2 = receiveSections(splitted, client, loggedInNickname);
+              result_2 = receiveSections(splitted, client, loggedInNickname, editingRoom);
               println("Result2 = " + result_2);
             }
             break;
@@ -857,7 +829,12 @@ public class Client
             if(result == Op.SuccessfullyStartedEditing)
             {
               assert(client != null);
-              result_2 = receiveSections(splitted, client, loggedInNickname);
+              editingRoom.setEditing(true);
+              result_2 = receiveSections(splitted, client, loggedInNickname, editingRoom);
+              if(result_2 == Op.SuccessfullyReceivedSections)
+              {
+                editingRoom.joinGroup();
+              }
               println("Result2 = " + result_2);
             }
             break;
@@ -867,6 +844,8 @@ public class Client
             println("Result = " + result);
             if(result == Op.SuccessfullyEndedEditing)
             {
+              editingRoom.setEditing(false);
+              editingRoom.leaveGroup();
               assert(client != null);
               result_2 = sendSection(splitted, client, loggedInNickname);
               println("Result2 = " + result_2);
@@ -875,12 +854,12 @@ public class Client
 
           case "send" :
             splitted = stdin.split("\\s+", 2);
-            result = handleSend(splitted, client, loggedInNickname);
+            result = handleSend(splitted, client, loggedInNickname, editingRoom);
             println("Result = " + result);
             break;
 
           case "receive" :
-            result = handleReceive(client);
+            result = handleReceive(client, editingRoom);
             println("Result = " + result);
             break;
 

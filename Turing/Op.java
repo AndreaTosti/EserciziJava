@@ -38,7 +38,6 @@ public enum Op
   Edit,                       // Operazione di richiesta modifica di una sezione
   EndEdit,                    // Operazione di richiesta fine modifica di una
                               // sezione
-  Send,                       // Operazione di invio di un messaggio
   Error,                      // Errore non ben specificato
   UsageError,                 // Passaggio parametri sbagliato
   ClosedConnection,           // Il server non È più raggiungibile
