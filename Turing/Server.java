@@ -1,11 +1,9 @@
 package Turing;
 
-import javax.print.Doc;
 import java.io.File;
 import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.channels.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -19,13 +17,11 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.stream.IntStream;
 
 public class Server
 {
   private static int DEFAULT_PORT = 51811; //Porta di Default
   private static int DEFAULT_RMI_PORT = 51812; //Porta RMI
-  private static int BUFFER_SIZE  = 4096; //Dimensione del buffer
   private static String DEFAULT_DELIMITER = "#";
   private static String DEFAULT_INTERIOR_DELIMITER = ":";
   private static String DEFAULT_PARENT_FOLDER = "518111_ServerDirs";
@@ -155,13 +151,14 @@ public class Server
     }
     Documento documento = new Documento(nomeDocumento, numSezioni, utente, newSezioni);
 
-    if(documents.putIfAbsent(nomeDocumento, documento) != null)
-      return Op.DocumentAlreadyExists;
-
     //Creo una cartella avente come nome il nome del documento
     Path directoryPath = Paths.get(DEFAULT_PARENT_FOLDER + File.separator + nomeDocumento);
+    //Evito di sovrascrivere dei files involontariamente (lato Server)
     if(Files.exists(directoryPath))
       return Op.DirectoryAlreadyExists;
+
+    if(documents.putIfAbsent(nomeDocumento, documento) != null)
+      return Op.DocumentAlreadyExists;
 
     try
     {
@@ -265,7 +262,6 @@ public class Server
 
     if(numSezione != -1)
     {
-      printErr("LENGTH: " + documento.getSezioni().length + " NUM SEZIONE: " + numSezione);
       if(documento.getSezioni().length <= numSezione)
         return Op.SectionDoesNotExists;
     }
@@ -390,6 +386,19 @@ public class Server
       return Op.Error;
 
     sezione.endEdit();
+
+    //Se in quel documento nessuno sta più editando la sezione
+    //allora ricicla l'indirizzo IP Multicast
+    Sezione[] sezioni = documento.getSezioni();
+    boolean recycleIP = true;
+    for(Sezione sez : sezioni)
+    {
+      if(sez.getUserEditing() != null)
+        recycleIP = false;
+    }
+    if(recycleIP)
+      documento.setMulticastAddress(null);
+
     sessione.setStato(Sessione.Stato.Logged);
 
     return Op.SuccessfullyEndedEditing;
@@ -686,8 +695,9 @@ public class Server
                     //Abbiamo la dimensione della sezione nel buffer
                     //Ora bisogna scaricare la sezione
                     buffer.flip();
-                    int sectionSize = Integer.valueOf(new String(buffer.array(),
-                            0, Long.BYTES, StandardCharsets.ISO_8859_1));
+//                    int sectionSize = Integer.valueOf(new String(buffer.array(),
+//                            0, Long.BYTES, StandardCharsets.ISO_8859_1));
+                    int sectionSize = new Long(buffer.getLong()).intValue();
                     println("Section size: " + sectionSize);
                     attachments.setRemainingBytes(sectionSize);
                     attachments.setBuffer(ByteBuffer.allocate(sectionSize));
@@ -739,7 +749,10 @@ public class Server
                               StandardOpenOption.WRITE));
 
                       while(buffer.hasRemaining())
-                        fileChannel.write(buffer);
+                      {
+                        println("----WRITTEN " + fileChannel.write(buffer));
+                      }
+
                       //FIXME: Non si sa se sia indispensabile più di una scrittura.
 
                       //Abbiamo memorizzato la sezione
@@ -995,8 +1008,8 @@ public class Server
                   }
                   else if(requestedOperation == Op.EndEdit && result == Op.SuccessfullyEndedEditing)
                   {
-                    //Devo ricevere una sezione, sia la dimensione che la sezione stessa
-                    // vado nello stato gettingSectionSize
+                    //Devo ricevere una sezione, sia la dimensione che la sezione
+                    //stessa, quindi vado nello stato gettingSectionSize
                     attachments.setRemainingBytes(Long.BYTES);
                     attachments.setBuffer(ByteBuffer.allocate(Long.BYTES));
                     attachments.setStep(Step.GettingSectionSize);
@@ -1147,6 +1160,8 @@ public class Server
                   Documento documento = documents.get(nomeDocumento);
                   Long multicastAddress = documento.getMulticastAddress();
                   buffer = ByteBuffer.allocate(Long.BYTES);
+                  if(multicastAddress == null)
+                    multicastAddress = 0L;
                   buffer.putLong(multicastAddress);
                   buffer.flip();
 

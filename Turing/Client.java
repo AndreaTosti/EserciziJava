@@ -639,14 +639,18 @@ public class Client
       FileChannel fileChannel = FileChannel.open(filePath);
 
       long dimensioneFile = fileChannel.size();
-      String numBytesStr = String.format("%0" + Long.BYTES + "d", dimensioneFile);
-      byte[] numBytes = numBytesStr.getBytes();
-      ByteBuffer bufferDimensione = ByteBuffer.wrap(numBytes);
+      ByteBuffer bufferDimensione = ByteBuffer.allocate(Long.BYTES);
+      bufferDimensione.putLong(dimensioneFile);
+      bufferDimensione.flip();
 
       //Decido di bufferizzare l'intero file
       ByteBuffer buffer = ByteBuffer.allocate(Math.toIntExact(dimensioneFile));
-      while(buffer.hasRemaining())
-        fileChannel.read(buffer);
+      println("DIMENSIONE FILE: " + dimensioneFile + " bytes");
+      int bytesReadFromFile = 0;
+      while(dimensioneFile > bytesReadFromFile )
+      {
+        bytesReadFromFile += fileChannel.read(buffer);
+      }
       //FIXME: Non si sa se sia indispensabile più di una lettura.
 
       fileChannel.close();
@@ -680,6 +684,10 @@ public class Client
     String messaggio = splitted[1];
 
     StringBuilder builder = new StringBuilder();
+
+    //Metto il nickname e un delimitatore che verranno poi scartati (ridondanti)
+    builder.append(loggedInNickname);
+    builder.append(DEFAULT_DELIMITER);
     builder.append(new SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.ITALY).format(new Date()));
     builder.append(" ");
     builder.append(loggedInNickname);
@@ -702,25 +710,35 @@ public class Client
     return Op.SuccessfullySentMessage;
   }
 
-  private static Op handleReceive(SocketChannel client, EditingRoom editingRoom)
+  private static Op handleReceive(SocketChannel client, String loggedInNickname,
+                                  EditingRoom editingRoom)
   {
     if(!editingRoom.isEditing())
       return Op.MustBeInEditingState;
 
     byte[] buffer = new byte[DEFAULT_BUFFER_SIZE];
     DatagramPacket packetToReceive = new DatagramPacket(buffer, buffer.length);
-    try
+    while(true)
     {
-      editingRoom.getMulticastSocket().receive(packetToReceive);
-    }catch(IOException e)
-    {
-      e.printStackTrace();
-      return Op.Error;
+      try
+      {
+        editingRoom.getMulticastSocket().receive(packetToReceive);
+        String receivedMessage = new String(packetToReceive.getData(), 0,
+                packetToReceive.getLength(), StandardCharsets.UTF_8);
+        String[] splittedReceivedMessage = receivedMessage.split(DEFAULT_DELIMITER, 2);
+        if(!splittedReceivedMessage[0].equals(loggedInNickname))
+          println(splittedReceivedMessage[1]);
+      }
+      catch(SocketTimeoutException e_)
+      {
+        break;
+      }
+      catch(IOException e)
+      {
+        e.printStackTrace();
+        return Op.Error;
+      }
     }
-
-    String s = new String(packetToReceive.getData(), 0,
-            packetToReceive.getLength(), StandardCharsets.UTF_8);
-    println("RECEIVED MESSAGE: " + s);
 
     return Op.SuccessfullyReceivedMessage;
   }
@@ -859,7 +877,7 @@ public class Client
             break;
 
           case "receive" :
-            result = handleReceive(client, editingRoom);
+            result = handleReceive(client, loggedInNickname, editingRoom);
             println("Result = " + result);
             break;
 
