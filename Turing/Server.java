@@ -382,6 +382,10 @@ public class Server
     }
 
     Sezione sezione = documento.getSezioni()[numSezione];
+
+    if(sezione.getUserEditing() == null)
+      return Op.Error;
+
     if(!sezione.getUserEditing().equals(utente))
       return Op.Error;
 
@@ -1072,9 +1076,11 @@ public class Server
                     FileChannel fileChannel = FileChannel.open(filePath);
 
                     long dimensioneFile = fileChannel.size();
-                    String numBytesStr = String.format("%0" + Long.BYTES + "d", dimensioneFile);
-                    byte[] numBytes = numBytesStr.getBytes();
-                    buffer = ByteBuffer.wrap(numBytes);
+
+                    buffer = ByteBuffer.allocate(Long.BYTES);
+                    buffer.putLong(dimensioneFile);
+                    buffer.flip();
+
                     attachments.setRemainingBytes(buffer.array().length);
                     attachments.setBuffer(buffer);
                     attachments.setStep(Step.SendingSectionSize);
@@ -1196,12 +1202,13 @@ public class Server
                   Sezione sezione = sezioni.element();
                   long stato;
                   if(sezione.getUserEditing() == null)
-                    stato = 0;
+                    stato = 0L;
                   else
-                    stato = 1;
-                  String numBytesStr = String.format("%0" + Long.BYTES + "d", stato);
-                  byte[] numBytes = numBytesStr.getBytes();
-                  buffer = ByteBuffer.wrap(numBytes);
+                    stato = 1L;
+
+                  buffer = ByteBuffer.allocate(Long.BYTES);
+                  buffer.putLong(stato);
+                  buffer.flip();
                   attachments.setRemainingBytes(buffer.array().length);
                   attachments.setBuffer(buffer);
                   attachments.setStep(Step.SendingSectionStatus);
@@ -1306,9 +1313,12 @@ public class Server
                       }
                       FileChannel fileChannel = FileChannel.open(filePath);
                       long dimensioneFile = fileChannel.size();
-                      String numBytesStr = String.format("%0" + Long.BYTES + "d", dimensioneFile);
-                      byte[] numBytes = numBytesStr.getBytes();
-                      buffer = ByteBuffer.wrap(numBytes);
+
+                      println("DIMFILE: " + dimensioneFile);
+                      buffer = ByteBuffer.allocate(Long.BYTES);
+                      buffer.putLong(dimensioneFile);
+                      buffer.flip();
+
                       attachments.setRemainingBytes(buffer.array().length);
                       attachments.setBuffer(buffer);
                       attachments.setStep(Step.SendingSectionSize);

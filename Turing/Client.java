@@ -354,8 +354,7 @@ public class Client
           return Op.ClosedConnection;
 
         bufferDimensione.flip();
-        int dimensioneFile = Integer.valueOf(new String(bufferDimensione.array(), 0,
-                resD, StandardCharsets.ISO_8859_1));
+        int dimensioneFile = new Long(bufferDimensione.getLong()).intValue();
 
         bufferNumSezione.flip();
         int numeroSezione = Integer.valueOf(new String(bufferNumSezione.array(), 0,
@@ -383,8 +382,7 @@ public class Client
         }
 
         bufferStato.flip();
-        int stato = Integer.valueOf(new String(bufferStato.array(), 0,
-                resS, StandardCharsets.ISO_8859_1));
+        long stato = bufferStato.getLong();
 
         ByteBuffer buffer = ByteBuffer.allocate(dimensioneFile);
         //Per il testing in localhost, il nome della cartella conterrà anche
