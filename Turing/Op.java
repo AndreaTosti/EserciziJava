@@ -45,6 +45,8 @@ public enum Op
   AlreadyLoggedIn,            // L'utente è già loggato
   CannotLogout,               // L'utente è nello stato Started o Editing
   SuccessfullySent,           // Richiesta inviata con successo
+  MustBeInStartedState,       // Bisogna essere nello stato Started per eseguire
+                              // il comando
   MustBeInLoggedState,        // Bisogna essere nello stato Logged per eseguire
                               // il comando
   MustBeInEditingState,       // Bisogna essere nello stato Editing per eseguire
@@ -55,9 +57,90 @@ public enum Op
                               // documento
   CreatorCannotBeCollaborator,// Il creatore del documento non può essere
                               // collaboratore
+  NotEditingThisSection;      // Non si sta attualmente editando questa sezione
 
+  static void printErr(Object o)
+  {
+    System.err.println("[Error] " + o);
+  }
 
-
-  //---------------//,
+  static void print(Op op)
+  {
+    switch(op)
+    {
+      case WrongPassword :
+        printErr("Password non corretta");
+        break;
+      case UserDoesNotExists :
+        printErr("L'utente specificato non esiste");
+        break;
+      case NicknameAlreadyExists :
+        printErr("Esiste già un utente con questo nickname");
+        break;
+      case DocumentAlreadyExists :
+        printErr("Esiste già un documento con questo nome");
+        break;
+      case DirectoryAlreadyExists :
+        printErr("Esiste già una directory con questo nome");
+        break;
+      case NotDocumentCreator :
+        printErr("Privilegi insufficienti: non si è creatori del documento");
+        break;
+      case NotDocumentCreatorNorCollaborator :
+        printErr("Privilegi insufficienti: non si è creatori né collaboratori" +
+                "del documento");
+        break;
+      case SectionUnderModification :
+        printErr("La sezione è attualmente sotto modifica");
+        break;
+      case Error :
+        printErr("Errore non ben specificato");
+        break;
+      case UsageError :
+        printErr("Errore di utilizzo del comando");
+        break;
+      case ClosedConnection :
+        printErr("host non più raggiungibile");
+        break;
+      case UnknownSession :
+        printErr("Sessione inesistente");
+        break;
+      case AlreadyLoggedIn :
+        printErr("Login già effettuato");
+        break;
+      case CannotLogout :
+        printErr("Impossibile effettuare il logout (non si è nello stato " +
+                "Started o Editing)");
+        break;
+      case MustBeInStartedState :
+        printErr("Bisogna essere nello stato Started per eseguire il comando");
+        break;
+      case MustBeInLoggedState :
+        printErr("Bisogna essere nello stato Logged per eseguire il comando");
+        break;
+      case MustBeInEditingState :
+        printErr("Bisogna essere nello stato Editing per eseguire il comando");
+        break;
+      case DocumentDoesNotExists :
+        printErr("Il documento specificato non esiste");
+        break;
+      case SectionDoesNotExists :
+        printErr("La sezione specificata non esiste ");
+        break;
+      case AlreadyCollaborates :
+        printErr("L'utente specificato collabora già alla modifica del" +
+                "documento");
+        break;
+      case CreatorCannotBeCollaborator :
+        printErr("Un creatore non può essere anche collaboratore");
+        break;
+      case NotEditingThisSection :
+        printErr("Non si sta attualmente modificando questa sezione");
+        break;
+      default:
+        printErr("Errore non codificato");
+        break;
+    }
+  }
 
 }

@@ -384,10 +384,10 @@ public class Server
     Sezione sezione = documento.getSezioni()[numSezione];
 
     if(sezione.getUserEditing() == null)
-      return Op.Error;
+      return Op.NotEditingThisSection;
 
     if(!sezione.getUserEditing().equals(utente))
-      return Op.Error;
+      return Op.NotEditingThisSection;
 
     sezione.endEdit();
 
@@ -1068,8 +1068,8 @@ public class Server
                   {
                     if(Files.notExists(filePath))
                     {
-                      //FIXME: la sezione non esiste nella directory
-                      //       creo un file vuoto e lo invio lo stesso
+                      //la sezione non esiste nella directory
+                      //creo un file vuoto e lo invio lo stesso
                       printErr("Filename " + sezione.getNomeSezione() + ".txt" +
                               " does not exists in the current working directory: " +
                               System.getProperty("user.dir"));

@@ -1,6 +1,6 @@
 package Turing;
 
-public class Sessione
+class Sessione
 {
   private Utente utente;
   private Stato stato;

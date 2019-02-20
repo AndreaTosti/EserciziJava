@@ -86,4 +86,9 @@ class EditingRoom
   {
     this.multicastAddress = multicastAddress;
   }
+
+  String getMulticastAddress()
+  {
+    return multicastAddress;
+  }
 }

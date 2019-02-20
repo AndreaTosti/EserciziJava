@@ -36,12 +36,12 @@ public class Client
 
   private static Pattern validPattern = Pattern.compile("[A-Za-z0-9_]+");
 
-  private static void println(Object o)
+  static void println(Object o)
   {
     System.out.println("[Client] " + o);
   }
 
-  private static void printErr(Object o)
+  static void printErr(Object o)
   {
     System.err.println("[Client-Error] " + o);
   }
@@ -376,7 +376,6 @@ public class Client
             }
             longIP = longIP >> 8;
           }
-          printErr("VERRA' UTILIZZATO L'IP " + sb.toString());
           editingRoom.setMulticastAddress(sb.toString());
         }
 
@@ -623,8 +622,8 @@ public class Client
     {
       if(Files.notExists(filePath))
       {
-        //FIXME: la sezione non esiste nella directory
-        //       creo un file vuoto e lo invio lo stesso
+        //la sezione non esiste nella directory
+        //creo un file vuoto e lo invio lo stesso
         printErr("Filename " + nomeDocumento +
                 "_" + numSezione + ".txt" +
                 " does not exists in the current working directory: " +
@@ -647,7 +646,6 @@ public class Client
       {
         bytesReadFromFile += fileChannel.read(buffer);
       }
-      //FIXME: Non si sa se sia indispensabile più di una lettura.
 
       fileChannel.close();
 
@@ -782,64 +780,110 @@ public class Client
           case "register" :
             if(loggedInNickname != null)
             {
-              printErr("Non puoi registrarti mentre sei loggato");
+              Op.print(Op.MustBeInStartedState);
             }
             else
             {
               result = handleRegister(splitted);
-              println("Result = " + result);
+              if(result == Op.SuccessfullyRegistered)
+              {
+                println("Registrazione eseguita con successo.");
+              }
+              else
+              {
+                Op.print(result);
+              }
             }
             break;
 
           case "login" :
             result = handleLogin(splitted, client);
-            println("Result = " + result);
             if(result == Op.SuccessfullyLoggedIn)
+            {
               loggedInNickname = splitted[1];
+              println("Login eseguito con successo.");
+            }
+            else
+            {
+              Op.print(result);
+            }
             break;
 
           case "logout" :
             result = handleLogout(client);
-            println("Result = " + result);
             if(result == Op.SuccessfullyLoggedOut)
+            {
               loggedInNickname = null;
+              println("Logout eseguito con successo.");
+            }
+            else
+            {
+              Op.print(result);
+            }
             break;
 
           case "create" :
             result = handleCreate(splitted, client);
-            println("Result = " + result);
+            if(result == Op.SuccessfullyCreated)
+            {
+              println("Documento " + splitted[1] + ", composto da " +
+                      splitted[2] + " sezioni, creato con successo");
+            }
+            else
+            {
+              Op.print(result);
+            }
             break;
 
           case "share" :
             result = handleShare(splitted, client);
-            println("Result = " + result);
+            if(result == Op.SuccessfullyShared)
+            {
+              println("Documento " + splitted[1] + " condiviso con " +
+                      splitted[2] + " con successo");
+            }
+            else
+            {
+              Op.print(result);
+            }
             break;
 
           case "show" :
             result = handleShow(splitted, client);
-            println("Result = " + result);
             if(result == Op.SuccessfullyShown)
             {
               assert(client != null);
               result_2 = receiveSections(splitted, client, loggedInNickname, editingRoom);
-              println("Result2 = " + result_2);
+              if(splitted.length == 3)
+              {
+                println("Sezione " + splitted[2] + " scaricata con successo");
+              }
+              else
+              {
+                println("Documento " + splitted[1] + " scaricato con successo");
+              }
+            }
+            else
+            {
+              Op.print(result);
             }
             break;
 
           case "list" :
             result = handleList(client);
-            println("Result = " + result);
             if(result == Op.SuccessfullyListed)
             {
               assert(client != null);
               result_2 = receiveList(client);
-              println("Result2 = " + result_2);
+            }
+            else
+            {
+              Op.print(result);
             }
             break;
 
           case "edit" :
             result = handleEdit(splitted, client);
-            println("Result = " + result);
             if(result == Op.SuccessfullyStartedEditing)
             {
               assert(client != null);
@@ -848,33 +892,69 @@ public class Client
               if(result_2 == Op.SuccessfullyReceivedSections)
               {
                 editingRoom.joinGroup();
+                println("Sezione " + splitted[2] + " del documento " +
+                        splitted[1] + " scaricata con successo");
+                println("La chat è stata instaurata su indirizzo multicast " +
+                        editingRoom.getMulticastAddress());
               }
-              println("Result2 = " + result_2);
+              else
+              {
+                Op.print(result_2);
+              }
+            }
+            else
+            {
+              Op.print(result);
             }
             break;
 
           case "end-edit" :
             result = handleEndEdit(splitted, client);
-            println("Result = " + result);
             if(result == Op.SuccessfullyEndedEditing)
             {
               editingRoom.setEditing(false);
               editingRoom.leaveGroup();
               assert(client != null);
               result_2 = sendSection(splitted, client, loggedInNickname);
-              println("Result2 = " + result_2);
+              if(result_2 == Op.SuccessfullySentSection)
+              {
+                println("Sezione " + splitted[2] + " del documento " +
+                        splitted[1] + " aggiornata con successo.");
+              }
+              else
+              {
+                Op.print(result_2);
+              }
+            }
+            else
+            {
+              Op.print(result);
             }
             break;
 
           case "send" :
             splitted = stdin.split("\\s+", 2);
             result = handleSend(splitted, client, loggedInNickname, editingRoom);
-            println("Result = " + result);
+            if(result == Op.SuccessfullySentMessage)
+            {
+              println("Messaggio inviato sulla chat.");
+            }
+            else
+            {
+              Op.print(result);
+            }
             break;
 
           case "receive" :
             result = handleReceive(client, loggedInNickname, editingRoom);
-            println("Result = " + result);
+            if(result == Op.SuccessfullyReceivedMessage)
+            {
+              println("Tutti i messaggi sono stati ricevuti");
+            }
+            else
+            {
+              Op.print(result);
+            }
             break;
 
           default:
