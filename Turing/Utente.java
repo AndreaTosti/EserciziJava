@@ -14,11 +14,13 @@ class Utente
 
   private final String nickname;
   private final String password;
+  private String notifica;
 
   Utente(String nickname, String password)
   {
     this.nickname = nickname;
     this.password = password;
+    this.notifica = null;
   }
 
   String getNickname()
@@ -29,5 +31,15 @@ class Utente
   String getPassword()
   {
     return password;
+  }
+
+  String getNotifica()
+  {
+    return notifica;
+  }
+
+  void setNotifica(String notifica)
+  {
+    this.notifica = notifica;
   }
 }

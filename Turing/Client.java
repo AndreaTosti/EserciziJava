@@ -78,7 +78,7 @@ public class Client
   private static Op receiveOutcome(SocketChannel client)
   {
     ByteBuffer bufferDimensione = ByteBuffer.allocate(Long.BYTES);
-    int resD;
+    int resD, resN, resD2;
 
     try
     {
@@ -101,6 +101,49 @@ public class Client
         buffer.flip();
         String result = new String(buffer.array(), 0,
                 res, StandardCharsets.ISO_8859_1);
+
+        //Se ho una notifica, provvedo a riceverla
+        if(Op.valueOf(result) == Op.newNotification)
+        {
+          ByteBuffer bufferDimensioneNotifica = ByteBuffer.allocate(Long.BYTES);
+          resN = client.read(bufferDimensioneNotifica);
+          if(resN < 0)
+            return Op.ClosedConnection;
+
+          bufferDimensioneNotifica.flip();
+          int dimensioneNotifica =
+                  new Long(bufferDimensioneNotifica.getLong()).intValue();
+
+          ByteBuffer bufferNotifica = ByteBuffer.allocate(dimensioneNotifica);
+          res = client.read(bufferNotifica);
+          if(res < 0)
+            return Op.ClosedConnection;
+
+          bufferNotifica.flip();
+          String notifica = new String(bufferNotifica.array(), 0,
+                  dimensioneNotifica, StandardCharsets.ISO_8859_1);
+          println(notifica);
+
+          //Leggo il risultato dell'operazione richiesta
+          ByteBuffer bufferDimensioneRisultato = ByteBuffer.allocate(Long.BYTES);
+          resD2 = client.read(bufferDimensioneRisultato);
+          if(resD2 < 0)
+            return Op.ClosedConnection;
+
+          bufferDimensioneRisultato.flip();
+          int dimensioneRisultato =
+                  new Long(bufferDimensioneRisultato.getLong()).intValue();
+
+          ByteBuffer bufferRisultato = ByteBuffer.allocate(dimensioneRisultato);
+          res = client.read(bufferRisultato);
+          if(res < 0)
+            return Op.ClosedConnection;
+
+          bufferRisultato.flip();
+          result = new String(bufferRisultato.array(), 0,
+                  res, StandardCharsets.ISO_8859_1);
+
+        }
         return Op.valueOf(result);
       }
     }
@@ -111,6 +154,37 @@ public class Client
     }
   }
 
+  private static Op handleTuring(String[] splitted)
+  {
+    //Controllo il numero di parametri
+    if(splitted.length != 2)
+    {
+      printErr("Usage: turing --help");
+      return Op.UsageError;
+    }
+
+    if(!splitted[1].equals("--help"))
+    {
+      printErr("Usage: turing --help");
+      return Op.UsageError;
+    }
+
+    println("commands:");
+    println("\tregister <username> <password> registra l'utente");
+    println("\tlogin <username> <password>    effettua il login");
+    println("\tlogout                         effettua il logout");
+    println("\tcreate <doc> <numsezioni>      crea un documento");
+    println("\tshare <doc> <username>         condivide il documento");
+    println("\tshow <doc> <sec>               mostra una sezione del documento");
+    println("\tshow <doc>                     mostra l'intero documento");
+    println("\tlist                           mostra la lista dei documenti");
+    println("\tedit <doc> <sec>               modifica una sezione del documento");
+    println("\tend-edit <doc> <sec>           fine modifica della sezione del doc.");
+    println("\tsend <msg>                     invia un msg sulla chat");
+    println("\treceive                        visualizza i msg ricevuti sulla chat");
+
+    return Op.SuccessfullyShownHelp;
+  }
 
   private static Op handleRegister(String[] splitted)
   {
@@ -682,7 +756,8 @@ public class Client
     //Metto il nickname e un delimitatore che verranno poi scartati (ridondanti)
     builder.append(loggedInNickname);
     builder.append(DEFAULT_DELIMITER);
-    builder.append(new SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.ITALY).format(new Date()));
+    builder.append(new SimpleDateFormat("dd-MM-yyyy HH:mm:ss",
+            Locale.ITALY).format(new Date()));
     builder.append(" ");
     builder.append(loggedInNickname);
     builder.append(": ");
@@ -757,6 +832,9 @@ public class Client
       e2.printStackTrace();
     }
 
+    println("Successfuly connected at " + address);
+    println("Use turing --help to view all avaiable commands");
+
     EditingRoom editingRoom = new EditingRoom(false, null, DEFAULT_PORT);
 
     BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
@@ -777,6 +855,10 @@ public class Client
 
         switch(splitted[0].toLowerCase())
         {
+          case "turing" :
+            result = handleTuring(splitted);
+            break;
+
           case "register" :
             if(loggedInNickname != null)
             {

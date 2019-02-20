@@ -18,6 +18,7 @@ public enum Op
   SuccessfullySentSection,    // Invio sezione avvenuta con successo
   SuccessfullySentMessage,    // Invio messaggio avvenuto con successo
   SuccessfullyReceivedMessage,// Ricezione messaggio avvenuta con successo
+  SuccessfullyShownHelp,      // Messaggio di Help visualizzato con successo
   WrongPassword,              // Password non corretta
   UserDoesNotExists,          // L'utente non esiste
   NicknameAlreadyExists,      // Esiste già l'utente
@@ -57,7 +58,8 @@ public enum Op
                               // documento
   CreatorCannotBeCollaborator,// Il creatore del documento non può essere
                               // collaboratore
-  NotEditingThisSection;      // Non si sta attualmente editando questa sezione
+  NotEditingThisSection,      // Non si sta attualmente editando questa sezione
+  newNotification;            // Nuova notifica
 
   static void printErr(Object o)
   {

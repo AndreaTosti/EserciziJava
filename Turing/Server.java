@@ -218,6 +218,19 @@ public class Server
       return Op.AlreadyCollaborates;
 
     documento.addCollaboratore(utenteCollaboratore);
+    //TODO: Notifica l'utente utenteCollaboratore che ora può collaborare
+    //      al documento nomeDocumento
+    if(utenteCollaboratore.getNotifica() == null)
+    {
+      utenteCollaboratore.setNotifica("[Notification] You can now edit the" +
+              " following documents: " + nomeDocumento);
+    }
+    else
+    {
+      utenteCollaboratore.setNotifica(utenteCollaboratore.getNotifica() + ", " +
+              nomeDocumento);
+    }
+
     return Op.SuccessfullyShared;
   }
 
@@ -564,7 +577,6 @@ public class Server
                     attachments.setTotalSize(messageSize);
                     attachments.setParameters(null);
                     attachments.setList(null);
-                    //FIXME: Aggiunta -> da controllare se funziona
                     channel.register(selector, SelectionKey.OP_READ, attachments);
                   }
                 }
@@ -578,7 +590,12 @@ public class Server
 
                   if(res < 0)
                   {
-                    handleClosedConnection(channel);
+                    String clientRemoteAddress = channel.getRemoteAddress().toString();
+                    Op result = handleClosedConnection(channel);
+                    if(result == Op.SuccessfullyRemovedSession)
+                      println("Lost connection with client " + clientRemoteAddress);
+                    else
+                      Op.print(result);
                   }
                   else
                   {
@@ -644,27 +661,54 @@ public class Server
                           break;
                       }
 
-                      println("Result = " + result);
-                      byte[] resultBytes = result.toString().getBytes(StandardCharsets.ISO_8859_1);
-
-
-                      buffer = ByteBuffer.allocate(Long.BYTES);
-                      buffer.putLong(resultBytes.length);
-                      buffer.flip();
-
-                      String[] newSplitted = new String[splitted.length + 1];
+                      //Aggiungo due slot ai parametri
+                      String[] newSplitted = new String[splitted.length + 2];
                       System.arraycopy(splitted, 0, newSplitted,
                               0, splitted.length);
                       newSplitted[splitted.length] = result.toString();
+                      newSplitted[splitted.length + 1] = null;
 
-                      attachments.setRemainingBytes(buffer.array().length);
-                      attachments.setBuffer(buffer);
-                      attachments.setStep(Step.SendingOutcomeSize);
-                      attachments.setTotalSize(buffer.array().length);
-                      attachments.setParameters(newSplitted);
+                      Sessione sessione = sessions.get(channel);
+                      Utente utente = sessione.getUtente();
 
+                      boolean gotNotification = false;
+                      if(utente != null)
+                      {
+                        if(utente.getNotifica() != null)
+                          gotNotification = true;
+                      }
+
+                      if(gotNotification)
+                      {
+                        String notifica = utente.getNotifica();
+                        newSplitted[splitted.length + 1] = notifica;
+                        utente.setNotifica(null);
+
+                        result = Op.newNotification;
+
+                        byte[] resultBytes = result.toString().getBytes(StandardCharsets.ISO_8859_1);
+                        buffer = ByteBuffer.allocate(Long.BYTES);
+                        buffer.putLong(resultBytes.length);
+                        buffer.flip();
+                        attachments.setRemainingBytes(buffer.array().length);
+                        attachments.setBuffer(buffer);
+                        attachments.setStep(Step.SendingNotificationOpSize);
+                        attachments.setTotalSize(buffer.array().length);
+                        attachments.setParameters(newSplitted);
+                      }
+                      else
+                      {
+                        byte[] resultBytes = result.toString().getBytes(StandardCharsets.ISO_8859_1);
+                        buffer = ByteBuffer.allocate(Long.BYTES);
+                        buffer.putLong(resultBytes.length);
+                        buffer.flip();
+                        attachments.setRemainingBytes(buffer.array().length);
+                        attachments.setBuffer(buffer);
+                        attachments.setStep(Step.SendingOutcomeSize);
+                        attachments.setTotalSize(buffer.array().length);
+                        attachments.setParameters(newSplitted);
+                      }
                       channel.register(selector, SelectionKey.OP_WRITE, attachments);
-
                     }
                   }
                 }
@@ -681,7 +725,12 @@ public class Server
 
                 if(res < 0)
                 {
-                  handleClosedConnection(channel);
+                  String clientRemoteAddress = channel.getRemoteAddress().toString();
+                  Op result = handleClosedConnection(channel);
+                  if(result == Op.SuccessfullyRemovedSession)
+                    println("Lost connection with client " + clientRemoteAddress);
+                  else
+                    Op.print(result);
                 }
                 else
                 {
@@ -706,7 +755,6 @@ public class Server
                     attachments.setTotalSize(sectionSize);
                     attachments.setParameters(parameters); //Propagare i parametri
                     attachments.setList(null);
-                    //FIXME: Aggiunta -> da controllare se funziona
                     channel.register(selector, SelectionKey.OP_READ, attachments);
                   }
                 }
@@ -720,7 +768,12 @@ public class Server
 
                   if(res < 0)
                   {
-                    handleClosedConnection(channel);
+                    String clientRemoteAddress = channel.getRemoteAddress().toString();
+                    Op result = handleClosedConnection(channel);
+                    if(result == Op.SuccessfullyRemovedSession)
+                      println("Lost connection with client " + clientRemoteAddress);
+                    else
+                      Op.print(result);
                   }
                   else
                   {
@@ -753,8 +806,6 @@ public class Server
                       {
                         println("----WRITTEN " + fileChannel.write(buffer));
                       }
-
-                      //FIXME: Non si sa se sia indispensabile più di una scrittura.
 
                       //Abbiamo memorizzato la sezione
                       //torno nello stato WaitingForMessageSize
@@ -801,6 +852,133 @@ public class Server
 
             switch(step)
             {
+              case SendingNotificationOpSize :
+                res = channel.write(buffer);
+
+                println("SendingNotificationSize Written " + res + " bytes");
+                if(res < remainingBytes)
+                {
+                  //Non abbiamo finito di inviare la dimensione dell'Op di notifica
+                  remainingBytes -= res;
+                  attachments.setRemainingBytes(remainingBytes);
+                  println("res: " + res);
+                  continue;
+                }
+                else
+                {
+                  //Abbiamo inviato la dimensione della notifica
+                  //Invio l'operazione di notifica
+                  String[] parameters = attachments.getParameters();
+                  Op result = Op.newNotification;
+
+                  buffer = ByteBuffer.wrap(result.toString().getBytes());
+                  attachments.setRemainingBytes(buffer.array().length);
+                  attachments.setBuffer(buffer);
+                  attachments.setStep(Step.SendingNotificationOp);
+                  attachments.setTotalSize(buffer.array().length);
+                  attachments.setParameters(parameters);
+
+                  channel.register(selector, SelectionKey.OP_WRITE, attachments);
+                }
+                break;
+
+
+              case SendingNotificationOp :
+                res = channel.write(buffer);
+
+                println("SendingNotification Written " + res + " bytes");
+                if(res < remainingBytes)
+                {
+                  //Non abbiamo finito di inviare l'Op di notifica
+                  remainingBytes -= res;
+                  attachments.setRemainingBytes(remainingBytes);
+                  println("res: " + res);
+                  continue;
+                }
+                else
+                {
+                  //Abbiamo inviato l'Op di notifica
+                  //Invio la dimensione della notifica
+                  String[] parameters = attachments.getParameters();
+                  String notifica = parameters[parameters.length - 1];
+
+                  byte[] notifyBytes = notifica.toString().getBytes(StandardCharsets.ISO_8859_1);
+                  buffer = ByteBuffer.allocate(Long.BYTES);
+                  buffer.putLong(notifyBytes.length);
+                  buffer.flip();
+                  attachments.setRemainingBytes(buffer.array().length);
+                  attachments.setBuffer(buffer);
+                  attachments.setStep(Step.SendingNotificationSize);
+                  attachments.setTotalSize(buffer.array().length);
+                  attachments.setParameters(parameters);
+
+                  channel.register(selector, SelectionKey.OP_WRITE, attachments);
+                }
+                break;
+
+              case SendingNotificationSize :
+                res = channel.write(buffer);
+
+                println("SendingNotificationSize Written " + res + " bytes");
+                if(res < remainingBytes)
+                {
+                  //Non abbiamo finito di inviare la dimensione di notifica
+                  remainingBytes -= res;
+                  attachments.setRemainingBytes(remainingBytes);
+                  println("res: " + res);
+                  continue;
+                }
+                else
+                {
+                  //Abbiamo inviato la dimensione della notifica
+                  //Invio la notifica
+                  String[] parameters = attachments.getParameters();
+                  String notifica = parameters[parameters.length - 1];
+
+                  buffer = ByteBuffer.wrap(notifica.getBytes());
+                  attachments.setRemainingBytes(buffer.array().length);
+                  attachments.setBuffer(buffer);
+                  attachments.setStep(Step.SendingNotification);
+                  attachments.setTotalSize(buffer.array().length);
+                  attachments.setParameters(parameters);
+
+                  channel.register(selector, SelectionKey.OP_WRITE, attachments);
+                }
+                break;
+
+              case SendingNotification :
+                res = channel.write(buffer);
+
+                println("SendingNotification Written " + res + " bytes");
+                if(res < remainingBytes)
+                {
+                  //Non abbiamo finito di inviare la notifica
+                  remainingBytes -= res;
+                  attachments.setRemainingBytes(remainingBytes);
+                  println("res: " + res);
+                  continue;
+                }
+                else
+                {
+                  //Abbiamo inviato la notifica
+                  //Invio l'esito dell'operazione
+                  String[] parameters = attachments.getParameters();
+                  Op result = Op.valueOf(parameters[parameters.length - 2]);
+
+                  byte[] resultBytes = result.toString().getBytes(StandardCharsets.ISO_8859_1);
+                  buffer = ByteBuffer.allocate(Long.BYTES);
+                  buffer.putLong(resultBytes.length);
+                  buffer.flip();
+                  attachments.setRemainingBytes(buffer.array().length);
+                  attachments.setBuffer(buffer);
+                  attachments.setStep(Step.SendingOutcomeSize);
+                  attachments.setTotalSize(buffer.array().length);
+                  attachments.setParameters(parameters);
+
+                  channel.register(selector, SelectionKey.OP_WRITE, attachments);
+                }
+                break;
+
               case SendingOutcomeSize :
                 res = channel.write(buffer);
 
@@ -818,7 +996,7 @@ public class Server
                   //Abbiamo inviato la dimensione dell'esito
                   //Invio l'esito
                   String[] parameters = attachments.getParameters();
-                  Op result = Op.valueOf(parameters[parameters.length - 1]);
+                  Op result = Op.valueOf(parameters[parameters.length - 2]);
 
                   buffer = ByteBuffer.wrap(result.toString().getBytes());
                   attachments.setRemainingBytes(buffer.array().length);
@@ -849,7 +1027,7 @@ public class Server
                   String[] parameters = attachments.getParameters();
 
                   Op requestedOperation = Op.valueOf(parameters[0]);
-                  Op result = Op.valueOf(parameters[parameters.length - 1]);
+                  Op result = Op.valueOf(parameters[parameters.length - 2]);
 
                   if(requestedOperation == Op.Show && result == Op.SuccessfullyShown)
                   {
@@ -858,7 +1036,7 @@ public class Server
                     Documento documento = documents.get(nomeDocumento);
                     int numSezioni;
 
-                    if(parameters.length == 3 + 1)
+                    if(parameters.length == 3 + 2)
                     {
                       //singola sezione
                       int numSezione = Integer.parseInt(parameters[2]);
@@ -1251,7 +1429,6 @@ public class Server
 
                     while(buffer.hasRemaining())
                       fileChannel.read(buffer);
-                    //FIXME: Non si sa se sia indispensabile più di una lettura.
 
                     buffer.flip();
 
@@ -1305,8 +1482,8 @@ public class Server
                     {
                       if(Files.notExists(filePath))
                       {
-                        //FIXME: la sezione non esiste nella directory
-                        //       creo un file vuoto e lo invio lo stesso
+                        //la sezione non esiste nella directory
+                        //creo un file vuoto e lo invio lo stesso
                         printErr("Filename " + sezione.getNomeSezione() + ".txt" +
                                 " does not exists in the current working directory: " +
                                 System.getProperty("user.dir"));
