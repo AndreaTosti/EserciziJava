@@ -8,15 +8,13 @@ class Documento
 {
   private String nome;
   private Sezione[] sezioni;
-  private int numSezioni;
   private Utente creatore;
   private Map<String, Utente> collaborators;
   private Long multicastAddress;
 
-  Documento(String nome, int numSezioni, Utente creatore, Sezione[] sezioni)
+  Documento(String nome, Utente creatore, Sezione[] sezioni)
   {
     this.nome = nome;
-    this.numSezioni = numSezioni;
     this.creatore = creatore;
     this.sezioni = sezioni;
     this.collaborators = new HashMap<>();
@@ -57,7 +55,7 @@ class Documento
     return multicastAddress;
   }
 
-  public void setMulticastAddress(Long multicastAddress)
+  void setMulticastAddress(Long multicastAddress)
   {
     this.multicastAddress = multicastAddress;
   }

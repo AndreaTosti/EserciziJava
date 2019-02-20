@@ -149,7 +149,7 @@ public class Server
     {
       newSezioni[i] = new Sezione(nomeDocumento + "_" + i, nomeDocumento, i);
     }
-    Documento documento = new Documento(nomeDocumento, numSezioni, utente, newSezioni);
+    Documento documento = new Documento(nomeDocumento, utente, newSezioni);
 
     //Creo una cartella avente come nome il nome del documento
     Path directoryPath = Paths.get(DEFAULT_PARENT_FOLDER + File.separator + nomeDocumento);
@@ -290,7 +290,7 @@ public class Server
   private static Op handleEdit(String[] splitted, SocketChannel channel)
   {
     String nomeDocumento = splitted[1];
-    int numSezione = -1;
+    int numSezione;
     try
     {
       numSezione = Integer.parseInt(splitted[2]);
@@ -322,12 +322,8 @@ public class Server
        !documento.isCollaboratore((utente)))
       return Op.NotDocumentCreatorNorCollaborator;
 
-
-    if(numSezione != -1)
-    {
-      if(documento.getSezioni().length <= numSezione)
-        return Op.SectionDoesNotExists;
-    }
+    if(documento.getSezioni().length <= numSezione)
+      return Op.SectionDoesNotExists;
 
     Sezione sezione = documento.getSezioni()[numSezione];
     if(sezione.getUserEditing() != null)
@@ -342,7 +338,7 @@ public class Server
   private static Op handleEndEdit(String[] splitted, SocketChannel channel)
   {
     String nomeDocumento = splitted[1];
-    int numSezione = -1;
+    int numSezione;
     try
     {
       numSezione = Integer.parseInt(splitted[2]);
@@ -374,12 +370,8 @@ public class Server
             !documento.isCollaboratore((utente)))
       return Op.NotDocumentCreatorNorCollaborator;
 
-
-    if(numSezione != -1)
-    {
-      if(documento.getSezioni().length <= numSezione)
-        return Op.SectionDoesNotExists;
-    }
+    if(documento.getSezioni().length <= numSezione)
+      return Op.SectionDoesNotExists;
 
     Sezione sezione = documento.getSezioni()[numSezione];
 
@@ -482,6 +474,7 @@ public class Server
       catch(IOException | NullPointerException e)
       {
         e.printStackTrace();
+        break;
       }
       Set<SelectionKey> readyKeys = selector.selectedKeys();
       Iterator<SelectionKey> iterator = readyKeys.iterator();
@@ -529,7 +522,7 @@ public class Server
             Step step              =  attachments.getStep();
             int totalSize          =  attachments.getTotalSize();
             String[] parameters    =  attachments.getParameters();
-            String list            =  attachments.getList();
+            String list;
 
             int res;
 
@@ -541,7 +534,12 @@ public class Server
 
                 if(res < 0)
                 {
-                  handleClosedConnection(channel);
+                  String clientRemoteAddress = channel.getRemoteAddress().toString();
+                  Op result = handleClosedConnection(channel);
+                  if(result == Op.SuccessfullyRemovedSession)
+                    println("Lost connection with client " + clientRemoteAddress);
+                  else
+                    Op.print(result);
                 }
                 else
                 {
@@ -795,8 +793,8 @@ public class Server
             int remainingBytes     =  attachments.getRemainingBytes();
             ByteBuffer buffer      =  attachments.getBuffer();
             Step step              =  attachments.getStep();
-            int totalSize          =  attachments.getTotalSize();
-            String list            =  attachments.getList();
+            int totalSize;
+            String list;
 
             int res;
             LinkedList<Sezione> sezioni;
@@ -1433,7 +1431,5 @@ public class Server
         }
       }
     }
-
   }
-
 }
