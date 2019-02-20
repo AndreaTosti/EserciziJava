@@ -56,13 +56,15 @@ public class Client
   {
     byte[] operation = joinedString.getBytes(StandardCharsets.ISO_8859_1);
     //Invio il numero di bytes dell'operazione facendo il Padding
-    String numBytesStr = String.format("%0" + Long.BYTES + "d", operation.length);
-    byte[] numBytes = numBytesStr.getBytes();
-    ByteBuffer buffer0 = ByteBuffer.wrap(numBytes);
+
+    ByteBuffer bufferDimensione = ByteBuffer.allocate(Long.BYTES);
+    bufferDimensione.putLong(operation.length);
+    bufferDimensione.flip();
+
     ByteBuffer buffer1 = ByteBuffer.wrap(operation);
     try
     {
-      printErr("Written " + client.write(buffer0) + " bytes");
+      printErr("Written " + client.write(bufferDimensione) + " bytes");
       printErr("Written " + client.write(buffer1) + " bytes");
       return Op.SuccessfullySent;
     }
@@ -85,8 +87,7 @@ public class Client
         return Op.ClosedConnection;
 
       bufferDimensione.flip();
-      int dimensione = Integer.valueOf(new String(bufferDimensione.array(), 0,
-              resD, StandardCharsets.ISO_8859_1));
+      int dimensione = new Long(bufferDimensione.getLong()).intValue();
 
       ByteBuffer buffer = ByteBuffer.allocate(dimensione);
       int res;
@@ -324,8 +325,7 @@ public class Client
         return Op.ClosedConnection;
 
       bufferNumSezioni.flip();
-      int numeroSezioni = Integer.valueOf(new String(bufferNumSezioni.array(), 0,
-              resNi, StandardCharsets.ISO_8859_1));
+      int numeroSezioni = new Long(bufferNumSezioni.getLong()).intValue();
 
       printErr("----NUMERO SEZIONI: " + numeroSezioni);
 
@@ -357,8 +357,7 @@ public class Client
         int dimensioneFile = new Long(bufferDimensione.getLong()).intValue();
 
         bufferNumSezione.flip();
-        int numeroSezione = Integer.valueOf(new String(bufferNumSezione.array(), 0,
-                resNe, StandardCharsets.ISO_8859_1));
+        int numeroSezione = new Long(bufferNumSezione.getLong()).intValue();
 
         if(editingRoom.isEditing())
         {
@@ -473,8 +472,7 @@ public class Client
         return Op.ClosedConnection;
 
       bufferDimensione.flip();
-      int dimensione = Integer.valueOf(new String(bufferDimensione.array(), 0,
-              resD, StandardCharsets.ISO_8859_1));
+      int dimensione = new Long(bufferDimensione.getLong()).intValue();
 
       ByteBuffer buffer = ByteBuffer.allocate(dimensione);
       res = client.read(buffer);

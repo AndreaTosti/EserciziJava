@@ -558,8 +558,7 @@ public class Server
                     //Abbiamo la dimensione del messaggio nel buffer
                     //Ora bisogna scaricare il messaggio
                     buffer.flip();
-                    int messageSize = Integer.valueOf(new String(buffer.array(),
-                            0, Long.BYTES, StandardCharsets.ISO_8859_1));
+                    int messageSize = new Long(buffer.getLong()).intValue();
                     println("Message size: " + messageSize);
                     attachments.setRemainingBytes(messageSize);
                     attachments.setBuffer(ByteBuffer.allocate(messageSize));
@@ -649,9 +648,11 @@ public class Server
 
                       println("Result = " + result);
                       byte[] resultBytes = result.toString().getBytes(StandardCharsets.ISO_8859_1);
-                      String numBytesStr = String.format("%0" + Long.BYTES + "d", resultBytes.length);
-                      byte[] numBytes = numBytesStr.getBytes();
-                      buffer = ByteBuffer.wrap(numBytes);
+
+
+                      buffer = ByteBuffer.allocate(Long.BYTES);
+                      buffer.putLong(resultBytes.length);
+                      buffer.flip();
 
                       String[] newSplitted = new String[splitted.length + 1];
                       System.arraycopy(splitted, 0, newSplitted,
@@ -699,8 +700,6 @@ public class Server
                     //Abbiamo la dimensione della sezione nel buffer
                     //Ora bisogna scaricare la sezione
                     buffer.flip();
-//                    int sectionSize = Integer.valueOf(new String(buffer.array(),
-//                            0, Long.BYTES, StandardCharsets.ISO_8859_1));
                     int sectionSize = new Long(buffer.getLong()).intValue();
                     println("Section size: " + sectionSize);
                     attachments.setRemainingBytes(sectionSize);
@@ -881,9 +880,9 @@ public class Server
                       attachments.setSections(sezioni_);
                     }
 
-                    String numBytesStr = String.format("%0" + Long.BYTES + "d", numSezioni);
-                    byte[] numBytes = numBytesStr.getBytes();
-                    buffer = ByteBuffer.wrap(numBytes);
+                    buffer = ByteBuffer.allocate(Long.BYTES);
+                    buffer.putLong(new Long(numSezioni).intValue());
+                    buffer.flip();
                     attachments.setRemainingBytes(buffer.array().length);
                     attachments.setBuffer(buffer);
                     attachments.setStep(Step.SendingNumberOfSections);
@@ -940,9 +939,11 @@ public class Server
                     }
 
                     byte[] listBytes = joiner.toString().getBytes(StandardCharsets.ISO_8859_1);
-                    String numBytesStr = String.format("%0" + Long.BYTES + "d", listBytes.length);
-                    byte[] numBytes = numBytesStr.getBytes();
-                    buffer = ByteBuffer.wrap(numBytes);
+
+                    buffer = ByteBuffer.allocate(Long.BYTES);
+                    buffer.putLong(listBytes.length);
+                    buffer.flip();
+
                     attachments.setRemainingBytes(buffer.array().length);
                     attachments.setBuffer(buffer);
                     attachments.setStep(Step.SendingListSize);
@@ -998,9 +999,11 @@ public class Server
                     attachments.setSections(sezioni_);
 
                     int numSezioni = 1;
-                    String numBytesStr = String.format("%0" + Long.BYTES + "d", numSezioni);
-                    byte[] numBytes = numBytesStr.getBytes();
-                    buffer = ByteBuffer.wrap(numBytes);
+
+                    buffer = ByteBuffer.allocate(Long.BYTES);
+                    buffer.putLong(numSezioni);
+                    buffer.flip();
+
                     attachments.setRemainingBytes(buffer.array().length);
                     attachments.setBuffer(buffer);
                     attachments.setStep(Step.SendingNumberOfSections);
@@ -1123,10 +1126,11 @@ public class Server
                   {
                     FileChannel fileChannel = FileChannel.open(filePath);
                     long numeroSezione = sezione.getNumeroSezione();
-                    println("INVIO NUMERO SEZIONE " + numeroSezione);
-                    String numBytesStr = String.format("%0" + Long.BYTES + "d", numeroSezione);
-                    byte[] numBytes = numBytesStr.getBytes();
-                    buffer = ByteBuffer.wrap(numBytes);
+
+                    buffer = ByteBuffer.allocate(Long.BYTES);
+                    buffer.putLong(numeroSezione);
+                    buffer.flip();
+
                     attachments.setRemainingBytes(buffer.array().length);
                     attachments.setBuffer(buffer);
                     attachments.setStep(Step.SendingSectionNumber);
