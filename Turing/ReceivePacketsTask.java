@@ -2,7 +2,7 @@ package Turing;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
-import java.nio.charset.StandardCharsets;
+import java.net.SocketTimeoutException;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class ReceivePacketsTask implements Runnable
@@ -11,12 +11,15 @@ public class ReceivePacketsTask implements Runnable
   private byte[] buffer;
   private LinkedBlockingQueue<DatagramPacket> receivedPacketsQueue;
   private EditingRoom editingRoom;
+  private PauseControl pauseControl;
+
 
   ReceivePacketsTask(LinkedBlockingQueue<DatagramPacket> receivedPacketsQueue,
-                     EditingRoom editingRoom)
+                     EditingRoom editingRoom, PauseControl pauseControl)
   {
     this.receivedPacketsQueue = receivedPacketsQueue;
     this.editingRoom = editingRoom;
+    this.pauseControl = pauseControl;
   }
 
   @Override
@@ -26,14 +29,16 @@ public class ReceivePacketsTask implements Runnable
     {
       try
       {
+        pauseControl.pausePoint();
         buffer = new byte[DEFAULT_BUFFER_SIZE];
         DatagramPacket packetToReceive = new DatagramPacket(buffer, buffer.length);
         editingRoom.getMulticastSocket().receive(packetToReceive);
         receivedPacketsQueue.put(packetToReceive);
       }
-      catch(IOException | InterruptedException e)
+      catch(SocketTimeoutException ignored){}
+      catch(IOException | InterruptedException e2)
       {
-        e.printStackTrace();
+        e2.printStackTrace();
         System.exit(1);
       }
     }

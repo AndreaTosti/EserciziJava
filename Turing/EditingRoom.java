@@ -10,7 +10,7 @@ class EditingRoom
   private boolean isEditing;
   private String multicastAddress;
   private MulticastSocket multicastSocket;
-  private int soTimeout = 0; //Tempo illimitato
+  private int soTimeout = 1000; //1 secondo
 
   EditingRoom(boolean isEditing,
               String multicastAddress,

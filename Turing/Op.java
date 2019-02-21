@@ -90,7 +90,7 @@ public enum Op
         break;
       case NotDocumentCreatorNorCollaborator :
         printErr("Privilegi insufficienti: non si è creatori né collaboratori" +
-                "del documento");
+                " del documento");
         break;
       case SectionUnderModification :
         printErr("La sezione è attualmente sotto modifica");
@@ -112,7 +112,7 @@ public enum Op
         break;
       case CannotLogout :
         printErr("Impossibile effettuare il logout (non si è nello stato " +
-                "Started o Editing)");
+                " Started o Editing)");
         break;
       case MustBeInStartedState :
         printErr("Bisogna essere nello stato Started per eseguire il comando");
@@ -131,7 +131,7 @@ public enum Op
         break;
       case AlreadyCollaborates :
         printErr("L'utente specificato collabora già alla modifica del" +
-                "documento");
+                " documento");
         break;
       case CreatorCannotBeCollaborator :
         printErr("Un creatore non può essere anche collaboratore");

@@ -744,6 +744,10 @@ public class Client
     //Metto il nickname e un delimitatore che verranno poi scartati (ridondanti)
     builder.append(loggedInNickname);
     builder.append(DEFAULT_DELIMITER);
+
+    builder.append("[");
+    builder.append(editingRoom.getMulticastAddress());
+    builder.append("] ");
     builder.append(new SimpleDateFormat("dd-MM-yyyy HH:mm:ss",
             Locale.ITALY).format(new Date()));
     builder.append(" ");
@@ -751,17 +755,13 @@ public class Client
     builder.append(": ");
     builder.append(messaggio);
 
+    DatagramPacket packetToSend = new DatagramPacket(
+            builder.toString().getBytes(StandardCharsets.UTF_8),
+            builder.toString().getBytes(StandardCharsets.UTF_8).length,
+            editingRoom.getInetMulticastAddress(), DEFAULT_PORT);
     try
     {
-      for(int i = 0; i < 1000; i++)
-      {
-        DatagramPacket packetToSend = new DatagramPacket(
-                (builder.toString() + "..." + i).getBytes(StandardCharsets.UTF_8),
-                (builder.toString() + "..." + i).getBytes(StandardCharsets.UTF_8).length,
-                editingRoom.getInetMulticastAddress(), DEFAULT_PORT);
-        editingRoom.getMulticastSocket().send(packetToSend);
-      }
-
+      editingRoom.getMulticastSocket().send(packetToSend);
     }catch(IOException e)
     {
       e.printStackTrace();
@@ -824,9 +824,14 @@ public class Client
 
     LinkedBlockingQueue<DatagramPacket> receivedPacketsQueue =
             new LinkedBlockingQueue<>();
+
+    PauseControl pauseControl = new PauseControl();
+    pauseControl.pause();
+
     ReceivePacketsTask receivePacketsTask =
-            new ReceivePacketsTask(receivedPacketsQueue, editingRoom);
+            new ReceivePacketsTask(receivedPacketsQueue, editingRoom, pauseControl);
     Thread thPacketListener = new Thread(receivePacketsTask);
+    thPacketListener.start();
 
     try
     {
@@ -954,9 +959,7 @@ public class Client
             result = handleEdit(splitted, client);
             if(result == Op.SuccessfullyStartedEditing)
             {
-              thPacketListener = new Thread(receivePacketsTask);
-              thPacketListener.start();
-
+              pauseControl.unPause();
               assert(client != null);
               editingRoom.setEditing(true);
               result_2 = receiveSections(splitted, client, loggedInNickname, editingRoom);
@@ -983,7 +986,7 @@ public class Client
             result = handleEndEdit(splitted, client);
             if(result == Op.SuccessfullyEndedEditing)
             {
-              thPacketListener.interrupt();
+              pauseControl.pause();
               editingRoom.setEditing(false);
               editingRoom.leaveGroup();
               assert(client != null);
