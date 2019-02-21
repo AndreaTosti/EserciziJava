@@ -50,13 +50,24 @@ public class Server
   private static Op handleClosedConnection(SocketChannel channel)
   {
     Op returnValue;
-    if(sessions.remove(channel) == null)
+
+    Sessione sessione;
+
+    if((sessione = sessions.remove(channel)) == null)
     {
       returnValue = Op.UnknownSession;
     }
     else
     {
       returnValue = Op.SuccessfullyRemovedSession;
+
+      String nomeDocumentoEdit = sessione.getNomeDocumentoEdit();
+      if(nomeDocumentoEdit != null)
+      {
+        Documento documento = documents.get(nomeDocumentoEdit);
+        int numSezioneEdit = sessione.getNumSezioneEdit();
+        documento.getSezioni()[numSezioneEdit].endEdit();
+      }
     }
     try
     {
@@ -218,8 +229,6 @@ public class Server
       return Op.AlreadyCollaborates;
 
     documento.addCollaboratore(utenteCollaboratore);
-    //TODO: Notifica l'utente utenteCollaboratore che ora può collaborare
-    //      al documento nomeDocumento
     if(utenteCollaboratore.getNotifica() == null)
     {
       utenteCollaboratore.setNotifica("[Notification] You can now edit the" +
@@ -343,6 +352,9 @@ public class Server
       return Op.SectionUnderModification;
 
     sezione.edit(utente);
+
+    sessione.setNomeDocumentoEdit(nomeDocumento);
+    sessione.setNumSezioneEdit(numSezione);
     sessione.setStato(Sessione.Stato.Editing);
 
     return Op.SuccessfullyStartedEditing;
@@ -408,6 +420,8 @@ public class Server
     if(recycleIP)
       documento.setMulticastAddress(null);
 
+    sessione.setNomeDocumentoEdit(null);
+    sessione.setNumSezioneEdit(-1);
     sessione.setStato(Sessione.Stato.Logged);
 
     return Op.SuccessfullyEndedEditing;

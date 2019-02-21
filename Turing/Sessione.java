@@ -4,6 +4,8 @@ class Sessione
 {
   private Utente utente;
   private Stato stato;
+  private String nomeDocumentoEdit;
+  private int numSezioneEdit;
 
   enum Stato
   {
@@ -15,6 +17,8 @@ class Sessione
   Sessione()
   {
     this.stato = Stato.Started;
+    this.nomeDocumentoEdit = null;
+    this.numSezioneEdit = -1;
   }
 
   Utente getUtente()
@@ -36,4 +40,23 @@ class Sessione
     this.stato = stato;
   }
 
+  public String getNomeDocumentoEdit()
+  {
+    return nomeDocumentoEdit;
+  }
+
+  public void setNomeDocumentoEdit(String nomeDocumentoEdit)
+  {
+    this.nomeDocumentoEdit = nomeDocumentoEdit;
+  }
+
+  public int getNumSezioneEdit()
+  {
+    return numSezioneEdit;
+  }
+
+  public void setNumSezioneEdit(int numSezioneEdit)
+  {
+    this.numSezioneEdit = numSezioneEdit;
+  }
 }
