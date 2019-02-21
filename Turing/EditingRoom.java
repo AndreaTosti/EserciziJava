@@ -10,6 +10,7 @@ class EditingRoom
   private boolean isEditing;
   private String multicastAddress;
   private MulticastSocket multicastSocket;
+  private int soTimeout = 0; //Tempo illimitato
 
   EditingRoom(boolean isEditing,
               String multicastAddress,
@@ -20,7 +21,7 @@ class EditingRoom
     try
     {
       this.multicastSocket = new MulticastSocket(port);
-      this.multicastSocket.setSoTimeout(1);
+      this.multicastSocket.setSoTimeout(soTimeout);
     }
     catch(IOException e)
     {

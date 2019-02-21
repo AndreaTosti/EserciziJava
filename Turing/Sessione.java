@@ -40,22 +40,22 @@ class Sessione
     this.stato = stato;
   }
 
-  public String getNomeDocumentoEdit()
+  String getNomeDocumentoEdit()
   {
     return nomeDocumentoEdit;
   }
 
-  public void setNomeDocumentoEdit(String nomeDocumentoEdit)
+  void setNomeDocumentoEdit(String nomeDocumentoEdit)
   {
     this.nomeDocumentoEdit = nomeDocumentoEdit;
   }
 
-  public int getNumSezioneEdit()
+  int getNumSezioneEdit()
   {
     return numSezioneEdit;
   }
 
-  public void setNumSezioneEdit(int numSezioneEdit)
+  void setNumSezioneEdit(int numSezioneEdit)
   {
     this.numSezioneEdit = numSezioneEdit;
   }

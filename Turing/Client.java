@@ -21,6 +21,7 @@ import java.text.SimpleDateFormat;
 import java.util.EnumSet;
 import java.util.Locale;
 import java.util.StringJoiner;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.regex.Pattern;
 import java.util.Date;
 
@@ -51,11 +52,10 @@ public class Client
     return validPattern.matcher(string).matches();
   }
 
-
   private static Op sendRequest(String joinedString, SocketChannel client)
   {
     byte[] operation = joinedString.getBytes(StandardCharsets.ISO_8859_1);
-    //Invio il numero di bytes dell'operazione facendo il Padding
+    //Invio il numero di bytes dell'operazione
 
     ByteBuffer bufferDimensione = ByteBuffer.allocate(Long.BYTES);
     bufferDimensione.putLong(operation.length);
@@ -249,7 +249,6 @@ public class Client
   {
     //LOGOUT TCP
     //logout
-
     StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
     joiner.add(Op.Logout.toString());
     Op result = sendRequest(joiner.toString(), client);
@@ -294,7 +293,6 @@ public class Client
 
     //CREAZIONE DOCUMENTO TCP
     //create#nomedocumento#numsezioni
-
     StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
     joiner.add(Op.Create.toString()).add(nomeDocumento).add(splitted[2]);
 
@@ -325,7 +323,6 @@ public class Client
 
     //CONDIVISIONE DOCUMENTO TCP
     //share#nomedocumento#username
-
     StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
     joiner.add(Op.Share.toString()).add(nomeDocumento).add(username);
 
@@ -374,7 +371,6 @@ public class Client
 
     //Visualizzazione di una sezione o dell'intero documento
     //show#nomedocumento[#numsezione]
-
     StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
     joiner.add(Op.Show.toString()).add(nomeDocumento);
     if(splitted.length == 3)
@@ -401,11 +397,8 @@ public class Client
       bufferNumSezioni.flip();
       int numeroSezioni = new Long(bufferNumSezioni.getLong()).intValue();
 
-      printErr("----NUMERO SEZIONI: " + numeroSezioni);
-
       for(int i = 0; i < numeroSezioni; i++)
       {
-        //TODO: cambiare le seguenti tre righe per riutilizzare i buffer
         ByteBuffer bufferDimensione = ByteBuffer.allocate(Long.BYTES);
         ByteBuffer bufferNumSezione = ByteBuffer.allocate(Long.BYTES);
         ByteBuffer bufferIndirizzoMulticast = ByteBuffer.allocate(Long.BYTES);
@@ -437,10 +430,8 @@ public class Client
         {
           bufferIndirizzoMulticast.flip();
           long longIP = bufferIndirizzoMulticast.getLong();
-          /*
-           *  Trasforma IP da Long
-           *  https://stackoverflow.com/a/53105157
-           */
+
+          //Trasforma IP da Long https://stackoverflow.com/a/53105157
           StringBuilder sb = new StringBuilder(15);
           for (int j = 0; j < 4; j++)
           {
@@ -460,7 +451,7 @@ public class Client
         //Per il testing in localhost, il nome della cartella conterrà anche
         //l'username per distinguerlo da altri client sullo stesso host
 
-        //Si assume che il nomeSezione sia nome_numSezione
+        //Si assume che il nomeSezione sia nomeDocumento_numSezione
         String nomeDocumento = splitted[1];
         Path filePath = Paths.get(System.getProperty("user.dir") +
                 File.separator + DEFAULT_PARENT_FOLDER +
@@ -524,7 +515,6 @@ public class Client
   {
     //LIST TCP
     //list
-
     StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
     joiner.add(Op.List.toString());
     Op result = sendRequest(joiner.toString(), client);
@@ -625,7 +615,6 @@ public class Client
 
     //Richiesta modifica di una sezione
     //edit#nomedocumento#numsezione
-
     StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
     joiner.add(Op.Edit.toString()).add(nomeDocumento).add(splitted[2]);
 
@@ -671,7 +660,6 @@ public class Client
 
     //Richiesta fine modifica di una sezione
     //end-edit#nomedocumento#numsezione
-
     StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
     joiner.add(Op.EndEdit.toString()).add(nomeDocumento).add(splitted[2]);
 
@@ -763,13 +751,17 @@ public class Client
     builder.append(": ");
     builder.append(messaggio);
 
-    DatagramPacket packetToSend = new DatagramPacket(
-            builder.toString().getBytes(StandardCharsets.UTF_8),
-            builder.toString().getBytes(StandardCharsets.UTF_8).length,
-            editingRoom.getInetMulticastAddress(), DEFAULT_PORT);
     try
     {
-      editingRoom.getMulticastSocket().send(packetToSend);
+      for(int i = 0; i < 1000; i++)
+      {
+        DatagramPacket packetToSend = new DatagramPacket(
+                (builder.toString() + "..." + i).getBytes(StandardCharsets.UTF_8),
+                (builder.toString() + "..." + i).getBytes(StandardCharsets.UTF_8).length,
+                editingRoom.getInetMulticastAddress(), DEFAULT_PORT);
+        editingRoom.getMulticastSocket().send(packetToSend);
+      }
+
     }catch(IOException e)
     {
       e.printStackTrace();
@@ -780,33 +772,21 @@ public class Client
   }
 
   private static Op handleReceive(SocketChannel client, String loggedInNickname,
-                                  EditingRoom editingRoom)
+                                  EditingRoom editingRoom,
+                                  LinkedBlockingQueue<DatagramPacket> receivedPacketsQueue)
   {
     if(!editingRoom.isEditing())
       return Op.MustBeInEditingState;
 
-    byte[] buffer = new byte[DEFAULT_BUFFER_SIZE];
-    DatagramPacket packetToReceive = new DatagramPacket(buffer, buffer.length);
-    while(true)
+    //TODO: prendi dalla coda e stampa
+    DatagramPacket receivedPacket;
+    while((receivedPacket = receivedPacketsQueue.poll()) != null)
     {
-      try
-      {
-        editingRoom.getMulticastSocket().receive(packetToReceive);
-        String receivedMessage = new String(packetToReceive.getData(), 0,
-                packetToReceive.getLength(), StandardCharsets.UTF_8);
-        String[] splittedReceivedMessage = receivedMessage.split(DEFAULT_DELIMITER, 2);
-        if(!splittedReceivedMessage[0].equals(loggedInNickname))
-          println(splittedReceivedMessage[1]);
-      }
-      catch(SocketTimeoutException e_)
-      {
-        break;
-      }
-      catch(IOException e)
-      {
-        e.printStackTrace();
-        return Op.Error;
-      }
+      String receivedMessage = new String(receivedPacket.getData(), 0,
+              receivedPacket.getLength(), StandardCharsets.UTF_8);
+      String[] splittedReceivedMessage = receivedMessage.split(DEFAULT_DELIMITER, 2);
+      if(!splittedReceivedMessage[0].equals(loggedInNickname))
+        println(splittedReceivedMessage[1]);
     }
 
     return Op.SuccessfullyReceivedMessage;
@@ -841,6 +821,12 @@ public class Client
     String stdin;
 
     String loggedInNickname = null;
+
+    LinkedBlockingQueue<DatagramPacket> receivedPacketsQueue =
+            new LinkedBlockingQueue<>();
+    ReceivePacketsTask receivePacketsTask =
+            new ReceivePacketsTask(receivedPacketsQueue, editingRoom);
+    Thread thPacketListener = new Thread(receivePacketsTask);
 
     try
     {
@@ -968,6 +954,9 @@ public class Client
             result = handleEdit(splitted, client);
             if(result == Op.SuccessfullyStartedEditing)
             {
+              thPacketListener = new Thread(receivePacketsTask);
+              thPacketListener.start();
+
               assert(client != null);
               editingRoom.setEditing(true);
               result_2 = receiveSections(splitted, client, loggedInNickname, editingRoom);
@@ -994,6 +983,7 @@ public class Client
             result = handleEndEdit(splitted, client);
             if(result == Op.SuccessfullyEndedEditing)
             {
+              thPacketListener.interrupt();
               editingRoom.setEditing(false);
               editingRoom.leaveGroup();
               assert(client != null);
@@ -1028,7 +1018,8 @@ public class Client
             break;
 
           case "receive" :
-            result = handleReceive(client, loggedInNickname, editingRoom);
+            result = handleReceive(client, loggedInNickname,
+                    editingRoom, receivedPacketsQueue);
             if(result == Op.SuccessfullyReceivedMessage)
             {
               println("Tutti i messaggi sono stati ricevuti");
@@ -1051,7 +1042,5 @@ public class Client
     {
       e.printStackTrace();
     }
-
   }
-
 }
