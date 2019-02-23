@@ -182,6 +182,7 @@ public class Client
     println("\tend-edit <doc> <sec>           fine modifica della sezione del doc.");
     println("\tsend <msg>                     invia un msg sulla chat");
     println("\treceive                        visualizza i msg ricevuti sulla chat");
+    println("\tediting                        stampa la sezione che si sta editando");
 
     return Op.SuccessfullyShownHelp;
   }
@@ -383,7 +384,8 @@ public class Client
   }
 
   private static Op receiveSections(String[] splitted, SocketChannel client,
-                                    String loggedInNickname, EditingRoom editingRoom)
+                                    String loggedInNickname, EditingRoom editingRoom,
+                                    StringBuilder receivedMulticastAddress)
   {
     ByteBuffer bufferNumSezioni = ByteBuffer.allocate(Long.BYTES);
 
@@ -441,7 +443,7 @@ public class Client
             }
             longIP = longIP >> 8;
           }
-          editingRoom.setMulticastAddress(sb.toString());
+          receivedMulticastAddress.append(sb.toString());
         }
 
         bufferStato.flip();
@@ -746,7 +748,14 @@ public class Client
     builder.append(DEFAULT_DELIMITER);
 
     builder.append("[");
-    builder.append(editingRoom.getMulticastAddress());
+    try
+    {
+      builder.append(editingRoom.getMulticastAddress());
+    }
+    catch(InterruptedException e)
+    {
+      e.printStackTrace();
+    }
     builder.append("] ");
     builder.append(new SimpleDateFormat("dd-MM-yyyy HH:mm:ss",
             Locale.ITALY).format(new Date()));
@@ -754,15 +763,16 @@ public class Client
     builder.append(loggedInNickname);
     builder.append(": ");
     builder.append(messaggio);
-
-    DatagramPacket packetToSend = new DatagramPacket(
-            builder.toString().getBytes(StandardCharsets.UTF_8),
-            builder.toString().getBytes(StandardCharsets.UTF_8).length,
-            editingRoom.getInetMulticastAddress(), DEFAULT_PORT);
     try
     {
+      DatagramPacket packetToSend = new DatagramPacket(
+            builder.toString().getBytes(StandardCharsets.UTF_8),
+            builder.toString().getBytes(StandardCharsets.UTF_8).length,
+            InetAddress.getByName(editingRoom.getMulticastAddress()), DEFAULT_PORT);
+
       editingRoom.getMulticastSocket().send(packetToSend);
-    }catch(IOException e)
+    }
+    catch(InterruptedException | IOException e)
     {
       e.printStackTrace();
       return Op.Error;
@@ -778,7 +788,6 @@ public class Client
     if(!editingRoom.isEditing())
       return Op.MustBeInEditingState;
 
-    //TODO: prendi dalla coda e stampa
     DatagramPacket receivedPacket;
     while((receivedPacket = receivedPacketsQueue.poll()) != null)
     {
@@ -813,9 +822,9 @@ public class Client
     }
 
     println("Successfuly connected at " + address);
-    println("Use turing --help to view all avaiable commands");
+    println("Use turing --help to view all available commands");
 
-    EditingRoom editingRoom = new EditingRoom(false, null, DEFAULT_PORT);
+    EditingRoom editingRoom = new EditingRoom(false, DEFAULT_PORT);
 
     BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
     String stdin;
@@ -825,11 +834,8 @@ public class Client
     LinkedBlockingQueue<DatagramPacket> receivedPacketsQueue =
             new LinkedBlockingQueue<>();
 
-    PauseControl pauseControl = new PauseControl();
-    pauseControl.pause();
-
     ReceivePacketsTask receivePacketsTask =
-            new ReceivePacketsTask(receivedPacketsQueue, editingRoom, pauseControl);
+            new ReceivePacketsTask(receivedPacketsQueue, editingRoom);
     Thread thPacketListener = new Thread(receivePacketsTask);
     thPacketListener.start();
 
@@ -926,7 +932,9 @@ public class Client
             if(result == Op.SuccessfullyShown)
             {
               assert(client != null);
-              result_2 = receiveSections(splitted, client, loggedInNickname, editingRoom);
+              StringBuilder receivedMulticastAddress = new StringBuilder();
+              result_2 = receiveSections(splitted, client, loggedInNickname,
+                      editingRoom, receivedMulticastAddress);
               if(splitted.length == 3)
               {
                 println("Sezione " + splitted[2] + " scaricata con successo");
@@ -959,13 +967,18 @@ public class Client
             result = handleEdit(splitted, client);
             if(result == Op.SuccessfullyStartedEditing)
             {
-              pauseControl.unPause();
               assert(client != null);
               editingRoom.setEditing(true);
-              result_2 = receiveSections(splitted, client, loggedInNickname, editingRoom);
+              StringBuilder receivedMulticastAddress = new StringBuilder();
+              result_2 = receiveSections(splitted, client, loggedInNickname,
+                      editingRoom, receivedMulticastAddress);
               if(result_2 == Op.SuccessfullyReceivedSections)
               {
-                editingRoom.joinGroup();
+                println(receivedMulticastAddress.toString());
+
+                editingRoom.joinGroup(receivedMulticastAddress.toString());
+
+
                 println("Sezione " + splitted[2] + " del documento " +
                         splitted[1] + " scaricata con successo");
                 println("La chat è stata instaurata su indirizzo multicast " +
@@ -986,13 +999,13 @@ public class Client
             result = handleEndEdit(splitted, client);
             if(result == Op.SuccessfullyEndedEditing)
             {
-              pauseControl.pause();
               editingRoom.setEditing(false);
-              editingRoom.leaveGroup();
+
               assert(client != null);
               result_2 = sendSection(splitted, client, loggedInNickname);
               if(result_2 == Op.SuccessfullySentSection)
               {
+                editingRoom.leaveGroup();
                 println("Sezione " + splitted[2] + " del documento " +
                         splitted[1] + " aggiornata con successo.");
               }
@@ -1031,6 +1044,10 @@ public class Client
             {
               Op.print(result);
             }
+            break;
+
+          case "editing" :
+            //result = handleEditing();
             break;
 
           default:

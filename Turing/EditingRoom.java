@@ -3,21 +3,26 @@ package Turing;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
-import java.net.UnknownHostException;
+import java.util.LinkedList;
+import java.util.StringJoiner;
+import java.util.concurrent.LinkedBlockingQueue;
 
 class EditingRoom
 {
   private boolean isEditing;
-  private String multicastAddress;
-  private MulticastSocket multicastSocket;
-  private int soTimeout = 1000; //1 secondo
+  private static String DEFAULT_DELIMITER = "#";
 
-  EditingRoom(boolean isEditing,
-              String multicastAddress,
-              int port)
+  private LinkedBlockingQueue<String> requestQueue;
+
+  private LinkedList<String> joinedAddresses;
+
+  private static int soTimeout = 1000; //1 secondo
+
+  private MulticastSocket multicastSocket;
+
+  EditingRoom(boolean isEditing, int port)
   {
     this.isEditing = isEditing;
-    this.multicastAddress = multicastAddress;
     try
     {
       this.multicastSocket = new MulticastSocket(port);
@@ -27,45 +32,90 @@ class EditingRoom
     {
       e.printStackTrace();
     }
+    requestQueue = new LinkedBlockingQueue<String>();
+    joinedAddresses = new LinkedList<String>();
   }
 
-  InetAddress getInetMulticastAddress()
+  synchronized void joinGroup(String multicastAddress) throws InterruptedException
   {
-    try
-    {
-      return InetAddress.getByName(multicastAddress);
-    }
-    catch(UnknownHostException e)
-    {
-      e.printStackTrace();
-      return null;
-    }
+    StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
+    joiner.add("join").add(multicastAddress);
+    requestQueue.add(joiner.toString());
+
+    //Notifico il threadUDP che c'è una richiesta da elaborare
+    this.notifyAll();
+
+    //Il main deve aspettare che il thread UDP abbia elaborato la richiesta
+    while(requestQueue.size() != 0)
+      wait();
   }
 
-  void joinGroup()
+  synchronized void leaveGroup() throws InterruptedException
   {
-    try
-    {
-      multicastSocket.joinGroup(getInetMulticastAddress());
-    }catch(IOException e)
-    {
-      e.printStackTrace();
-    }
+    StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
+    joiner.add("leave");
+    requestQueue.add(joiner.toString());
+
+    //Il main deve aspettare che il thread UDP abbia elaborato la richiesta
+    while(requestQueue.size() != 0)
+      wait();
   }
 
-  void leaveGroup()
+  private synchronized boolean computeRequests()
   {
-    if(multicastSocket == null)
-      return;
-
+    String request;
     try
     {
-      multicastSocket.leaveGroup(InetAddress.getByName(multicastAddress));
+      while(( request = requestQueue.poll() ) != null)
+      {
+        String[] splitted = request.split(DEFAULT_DELIMITER);
+        assert ( splitted.length == 2 );
+        switch(splitted[0])
+        {
+          case "join":
+            multicastSocket.joinGroup(InetAddress.getByName(splitted[1]));
+            System.out.println("Joined " + splitted[1]);
+            assert (joinedAddresses.size() == 0);
+            joinedAddresses.addLast(splitted[1]);
+            break;
+          case "leave":
+            assert(joinedAddresses.size() == 1);
+            String address = joinedAddresses.remove();
+            multicastSocket.leaveGroup(InetAddress.getByName(address));
+            System.out.println("Left " + address);
+            break;
+          default:
+            break;
+        }
+      }
     }
     catch(IOException e)
     {
       e.printStackTrace();
     }
+    this.notifyAll();
+
+    return joinedAddresses.size() != 0;
+  }
+
+  synchronized void canReceiveAnotherPacket() throws IOException, InterruptedException
+  {
+    while(!computeRequests())
+    {
+      wait();
+    }
+  }
+
+  synchronized String getMulticastAddress() throws InterruptedException
+  {
+    assert(joinedAddresses.size() == 1);
+    return joinedAddresses.getFirst();
+  }
+
+  synchronized MulticastSocket getMulticastSocket() throws InterruptedException
+  {
+    assert(joinedAddresses.size() == 1);
+    return multicastSocket;
   }
 
   boolean isEditing()
@@ -78,18 +128,4 @@ class EditingRoom
     isEditing = editing;
   }
 
-  MulticastSocket getMulticastSocket()
-  {
-    return multicastSocket;
-  }
-
-  void setMulticastAddress(String multicastAddress)
-  {
-    this.multicastAddress = multicastAddress;
-  }
-
-  String getMulticastAddress()
-  {
-    return multicastAddress;
-  }
 }

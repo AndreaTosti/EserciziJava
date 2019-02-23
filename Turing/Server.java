@@ -406,6 +406,12 @@ public class Server
     if(!sezione.getUserEditing().equals(utente))
       return Op.NotEditingThisSection;
 
+    if(sessione.getNomeDocumentoEdit().compareTo(nomeDocumento) != 0)
+      return Op.NotEditingThisSection;
+
+    if(sessione.getNumSezioneEdit() != numSezione)
+      return Op.NotEditingThisSection;
+
     sezione.endEdit();
 
     //Se in quel documento nessuno sta più editando la sezione
