@@ -492,7 +492,7 @@ public class Client
         }
         fileChannel.close();
         println("La sezione " + nomeDocumento + "_" + numeroSezione +
-                " (" + res + " bytes) " +
+                " (" + counter + " bytes) " +
                 (stato == 1 ?
                               "è attualmente sotto modifiche" :
                               "non è attualmente sotto modifiche"));

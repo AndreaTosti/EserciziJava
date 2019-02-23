@@ -586,7 +586,6 @@ public class Server
                     //Non abbiamo ancora tutta la dimensione del messaggio
                     remainingBytes -= res;
                     attachments.setRemainingBytes(remainingBytes);
-                    continue;
                   }
                   else
                   {
@@ -626,7 +625,6 @@ public class Server
                       //Non abbiamo ancora ricevuto il messaggio per intero
                       remainingBytes -= res;
                       attachments.setRemainingBytes(remainingBytes);
-                      continue;
                     }
                     else
                     {
@@ -761,7 +759,6 @@ public class Server
                     //Non abbiamo ancora tutta la dimensione della sezione
                     remainingBytes -= res;
                     attachments.setRemainingBytes(remainingBytes);
-                    continue;
                   }
                   else
                   {
@@ -801,7 +798,6 @@ public class Server
                       //Non abbiamo ancora ricevuto la sezione per intero
                       remainingBytes -= res;
                       attachments.setRemainingBytes(remainingBytes);
-                      continue;
                     }
                     else
                     {
@@ -874,7 +870,6 @@ public class Server
                   //Non abbiamo finito di inviare la dimensione dell'Op di notifica
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  continue;
                 }
                 else
                 {
@@ -903,7 +898,6 @@ public class Server
                   //Non abbiamo finito di inviare l'Op di notifica
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  continue;
                 }
                 else
                 {
@@ -934,7 +928,6 @@ public class Server
                   //Non abbiamo finito di inviare la dimensione di notifica
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  continue;
                 }
                 else
                 {
@@ -962,7 +955,6 @@ public class Server
                   //Non abbiamo finito di inviare la notifica
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  continue;
                 }
                 else
                 {
@@ -993,7 +985,6 @@ public class Server
                   //Non abbiamo finito di inviare la dimensione dell'esito
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  continue;
                 }
                 else
                 {
@@ -1021,7 +1012,6 @@ public class Server
                   //Non abbiamo finito ad inviare l'esito
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  continue;
                 }
                 else
                 {
@@ -1226,7 +1216,6 @@ public class Server
                   //Non abbiamo finito di mandare il numero di sezioni
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  continue;
                 }
                 else
                 {
@@ -1282,7 +1271,6 @@ public class Server
                   //Non abbiamo finito di mandare la dimensione della sezione
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  continue;
                 }
                 else
                 {
@@ -1327,7 +1315,6 @@ public class Server
                   //Non abbiamo finito di mandare il numero identificativo di sezione
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  continue;
                 }
                 else
                 {
@@ -1364,7 +1351,6 @@ public class Server
                   //Non abbiamo finito di mandare l'indirizzo Multicast
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  continue;
                 }
                 else
                 {
@@ -1399,7 +1385,6 @@ public class Server
                   //Non abbiamo finito di mandare lo stato di modifica sezione
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  continue;
                 }
                 else
                 {
@@ -1419,7 +1404,7 @@ public class Server
 
                     while(buffer.hasRemaining())
                     {
-                      println("Read " + fileChannel.read(buffer) + " from file");
+                      println("Read " + fileChannel.read(buffer) + " bytes from file");
                     }
                     buffer.flip();
 
@@ -1448,7 +1433,6 @@ public class Server
                   //Non abbiamo finito di mandare la sezione
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  continue;
                 }
                 else
                 {
@@ -1522,7 +1506,6 @@ public class Server
                   //Non abbiamo finito di mandare la dimensione della lista
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  continue;
                 }
                 else
                 {
@@ -1552,7 +1535,6 @@ public class Server
                   //Non abbiamo finito di mandare la lista
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  continue;
                 }
                 else
                 {
