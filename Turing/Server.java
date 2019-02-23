@@ -26,13 +26,10 @@ public class Server
   private static String DEFAULT_INTERIOR_DELIMITER = ":";
   private static String DEFAULT_PARENT_FOLDER = "518111_ServerDirs";
 
-  //Utenti
   private static final ConcurrentMap<String, Utente> users = new ConcurrentHashMap<>();
 
-  //Sessione utente
   private static final Map<SocketChannel, Sessione> sessions = new HashMap<>();
 
-  //Documenti
   private static final Map<String, Documento> documents = new HashMap<>();
 
 
@@ -76,7 +73,7 @@ public class Server
     catch(IOException e)
     {
       e.printStackTrace();
-      return returnValue;
+      return Op.Error;
     }
 
     return returnValue;
@@ -438,22 +435,38 @@ public class Server
     //Porta su cui il server si mette in ascolto
     int serverPort;
 
-    if(args.length == 0)
+    //Porta RMI
+    int rmiPort;
+
+    try
     {
-      //Non ho passato il numero di porta
-      serverPort = DEFAULT_PORT;
-      println("No arguments specified, using default " +
-              "port number " + DEFAULT_PORT);
+      if(args.length == 0)
+      {
+        //Non ho passato argomenti
+        serverPort = DEFAULT_PORT;
+        rmiPort = DEFAULT_RMI_PORT;
+        println("No arguments specified, using default " + "port number " + DEFAULT_PORT + " and default RMI port number " + +DEFAULT_RMI_PORT);
+      } else if(args.length == 1)
+      {
+        //Ho passato solo il numero di porta
+        serverPort = Integer.parseInt(args[0]);
+        rmiPort = DEFAULT_RMI_PORT;
+        println("Listening to chosen port number " + serverPort + " and using " + "default RMI port number " + DEFAULT_RMI_PORT);
+      } else if(args.length == 2)
+      {
+        //Ho passato il numero di porta e il numero di porta RMI
+        serverPort = Integer.parseInt(args[0]);
+        rmiPort = Integer.parseInt(args[1]);
+        println("Listening to chosen port number " + serverPort + " and chosed " + "RMI port number " + rmiPort);
+      } else
+      {
+        printErr("Usage: java Server [port_number] [RMI_port_number]");
+        return;
+      }
     }
-    else if(args.length == 1)
+    catch(NumberFormatException e)
     {
-      //Ho passato il numero di porta
-      serverPort = Integer.parseInt(args[0]);
-      println("Listening to chosen port number " + serverPort);
-    }
-    else
-    {
-      printErr("Only one argument accepted : port number");
+      printErr("Usage: java Server [port_number] [RMI_port_number]");
       return;
     }
 
@@ -463,7 +476,7 @@ public class Server
       RegUtenteImplementation object = new RegUtenteImplementation(users);
       RegUtenteInterface stub =
               (RegUtenteInterface) UnicastRemoteObject.exportObject(object, 0);
-      Registry registry = LocateRegistry.createRegistry(DEFAULT_RMI_PORT);
+      Registry registry = LocateRegistry.createRegistry(rmiPort);
       registry.bind("RegUtente", stub);
     }
     catch(ExportException e1)
@@ -519,12 +532,9 @@ public class Server
         {
           if(key.isValid() && key.isAcceptable())
           {
-            //Nuova richiesta di connessione
-            println("key.isAcceptable");
-
             ServerSocketChannel server = (ServerSocketChannel) key.channel();
             SocketChannel client = server.accept();
-            println("New connection from client " + client.getRemoteAddress());
+            println("New connection from Client IP " + client.getRemoteAddress());
             client.configureBlocking(false);
 
             Attachment attachments = new Attachment(
@@ -541,12 +551,9 @@ public class Server
 
             //Crea una nuova sessione per il client
             sessions.put(client, new Sessione());
-
           }
           if(key.isValid() && key.isReadable())
           {
-            //Nuovo evento in lettura
-            println("key.isReadable ");
             SocketChannel channel = (SocketChannel)key.channel();
 
             Attachment attachments = (Attachment) key.attachment();
@@ -563,14 +570,14 @@ public class Server
             {
               case WaitingForMessageSize :
                 res = channel.read(buffer);
-                printErr("Read " + res + " bytes");
+                println("WaitingForMessageSize Read " + res + " bytes");
 
                 if(res < 0)
                 {
                   String clientRemoteAddress = channel.getRemoteAddress().toString();
                   Op result = handleClosedConnection(channel);
                   if(result == Op.SuccessfullyRemovedSession)
-                    println("Lost connection with client " + clientRemoteAddress);
+                    println("Lost connection from Client IP " + clientRemoteAddress);
                   else
                     Op.print(result);
                 }
@@ -581,7 +588,7 @@ public class Server
                     //Non abbiamo ancora tutta la dimensione del messaggio
                     remainingBytes -= res;
                     attachments.setRemainingBytes(remainingBytes);
-                    println("res: " + res);
+                    println("Read " + res + " bytes");
                     continue;
                   }
                   else
@@ -590,7 +597,6 @@ public class Server
                     //Ora bisogna scaricare il messaggio
                     buffer.flip();
                     int messageSize = new Long(buffer.getLong()).intValue();
-                    println("Message size: " + messageSize);
                     attachments.setRemainingBytes(messageSize);
                     attachments.setBuffer(ByteBuffer.allocate(messageSize));
                     attachments.setStep(Step.WaitingForMessage);
@@ -606,14 +612,14 @@ public class Server
                 try
                 {
                   res = channel.read(buffer);
-                  println("Read " + res + " bytes");
+                  println("WaitingForMessage Read " + res + " bytes");
 
                   if(res < 0)
                   {
                     String clientRemoteAddress = channel.getRemoteAddress().toString();
                     Op result = handleClosedConnection(channel);
                     if(result == Op.SuccessfullyRemovedSession)
-                      println("Lost connection with client " + clientRemoteAddress);
+                      println("Lost connection from Client IP " + clientRemoteAddress);
                     else
                       Op.print(result);
                   }
@@ -624,12 +630,13 @@ public class Server
                       //Non abbiamo ancora ricevuto il messaggio per intero
                       remainingBytes -= res;
                       attachments.setRemainingBytes(remainingBytes);
-                      println("res: " + res);
+                      println("Read " + res + " bytes");
                       continue;
                     }
                     else
                     {
                       //Abbiamo il messaggio
+                      //Bisogna elaborare l'operazione richiesta
                       buffer.flip();
                       String toSplit = new String(buffer.array(), 0,
                               totalSize, StandardCharsets.ISO_8859_1);
@@ -641,7 +648,7 @@ public class Server
                               channel.socket().getInetAddress().getHostAddress() +
                               " port : " + channel.socket().getPort());
                       Op result;
-                      printErr(toSplit);
+                      println(toSplit);
                       switch(requestedOperation)
                       {
                         case Login :
@@ -698,6 +705,8 @@ public class Server
                           gotNotification = true;
                       }
 
+                      //Se ho una notifica, prima mando quella e poi mando
+                      //L'esito dell'operazione richiesta
                       if(gotNotification)
                       {
                         String notifica = utente.getNotifica();
@@ -741,14 +750,14 @@ public class Server
 
               case GettingSectionSize :
                 res = channel.read(buffer);
-                printErr("Read " + res + " bytes");
+                println("GettingSectionSize Read " + res + " bytes");
 
                 if(res < 0)
                 {
                   String clientRemoteAddress = channel.getRemoteAddress().toString();
                   Op result = handleClosedConnection(channel);
                   if(result == Op.SuccessfullyRemovedSession)
-                    println("Lost connection with client " + clientRemoteAddress);
+                    println("Lost connection from Client IP " + clientRemoteAddress);
                   else
                     Op.print(result);
                 }
@@ -759,7 +768,6 @@ public class Server
                     //Non abbiamo ancora tutta la dimensione della sezione
                     remainingBytes -= res;
                     attachments.setRemainingBytes(remainingBytes);
-                    println("res: " + res);
                     continue;
                   }
                   else
@@ -768,7 +776,6 @@ public class Server
                     //Ora bisogna scaricare la sezione
                     buffer.flip();
                     int sectionSize = new Long(buffer.getLong()).intValue();
-                    println("Section size: " + sectionSize);
                     attachments.setRemainingBytes(sectionSize);
                     attachments.setBuffer(ByteBuffer.allocate(sectionSize));
                     attachments.setStep(Step.GettingSection);
@@ -784,14 +791,14 @@ public class Server
                 try
                 {
                   res = channel.read(buffer);
-                  println("Read " + res + " bytes");
+                  println("GettingSection Read " + res + " bytes");
 
                   if(res < 0)
                   {
                     String clientRemoteAddress = channel.getRemoteAddress().toString();
                     Op result = handleClosedConnection(channel);
                     if(result == Op.SuccessfullyRemovedSession)
-                      println("Lost connection with client " + clientRemoteAddress);
+                      println("Lost connection from Client IP " + clientRemoteAddress);
                     else
                       Op.print(result);
                   }
@@ -802,7 +809,6 @@ public class Server
                       //Non abbiamo ancora ricevuto la sezione per intero
                       remainingBytes -= res;
                       attachments.setRemainingBytes(remainingBytes);
-                      println("res: " + res);
                       continue;
                     }
                     else
@@ -824,7 +830,7 @@ public class Server
 
                       while(buffer.hasRemaining())
                       {
-                        println("----WRITTEN " + fileChannel.write(buffer));
+                        println("Written " + fileChannel.write(buffer) + " bytes to file");
                       }
 
                       //Abbiamo memorizzato la sezione
@@ -849,15 +855,12 @@ public class Server
                 break;
 
               default :
-                println("nessuna delle precedenti");
+                println("nessuna delle precedenti (read)");
                 break;
             }
           }
           if(key.isValid() && key.isWritable())
           {
-            //Nuovo evento in scrittura
-            println("key.isWritable ");
-
             SocketChannel channel = (SocketChannel)key.channel();
 
             Attachment attachments = (Attachment) key.attachment();
@@ -875,7 +878,7 @@ public class Server
               case SendingNotificationOpSize :
                 res = channel.write(buffer);
 
-                println("SendingNotificationSize Written " + res + " bytes");
+                println("SendingNotificationOpSize Written " + res + " bytes");
                 if(res < remainingBytes)
                 {
                   //Non abbiamo finito di inviare la dimensione dell'Op di notifica
@@ -906,7 +909,7 @@ public class Server
               case SendingNotificationOp :
                 res = channel.write(buffer);
 
-                println("SendingNotification Written " + res + " bytes");
+                println("SendingNotificationOp Written " + res + " bytes");
                 if(res < remainingBytes)
                 {
                   //Non abbiamo finito di inviare l'Op di notifica
@@ -945,7 +948,6 @@ public class Server
                   //Non abbiamo finito di inviare la dimensione di notifica
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  println("res: " + res);
                   continue;
                 }
                 else
@@ -975,7 +977,6 @@ public class Server
                   //Non abbiamo finito di inviare la notifica
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  println("res: " + res);
                   continue;
                 }
                 else
@@ -1008,7 +1009,6 @@ public class Server
                   //Non abbiamo finito di inviare la dimensione dell'esito
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  println("res: " + res);
                   continue;
                 }
                 else
@@ -1038,12 +1038,11 @@ public class Server
                   //Non abbiamo finito ad inviare l'esito
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  println("res: " + res);
                   continue;
                 }
                 else
                 {
-                  // Abbiamo inviato l'esito
+                  //Abbiamo inviato l'esito
                   String[] parameters = attachments.getParameters();
 
                   Op requestedOperation = Op.valueOf(parameters[0]);
@@ -1090,7 +1089,9 @@ public class Server
                   }
                   else if(requestedOperation == Op.List && result == Op.SuccessfullyListed)
                   {
-                    //Devo inviare la lista dei documenti in cui collabora e quelli creati
+                    //Devo inviare la lista dei documenti in cui collabora e
+                    //quelli creati da esso
+
                     //LIST TCP
                     //documentoX:creatoreX:collaboratore1_X: ... : collaboratoreN_X#
                     //documentoY:creatoreY:collaboratore1_Y: ... : collaboratoreM_Y#
@@ -1211,13 +1212,13 @@ public class Server
                   }
                   else if(requestedOperation == Op.EndEdit && result == Op.SuccessfullyEndedEditing)
                   {
-                    //Devo ricevere una sezione, sia la dimensione che la sezione
-                    //stessa, quindi vado nello stato gettingSectionSize
+                    //Devo ricevere una sezione, quindi sia la dimensione che
+                    //la sezione stessa, quindi vado nello stato gettingSectionSize
                     attachments.setRemainingBytes(Long.BYTES);
                     attachments.setBuffer(ByteBuffer.allocate(Long.BYTES));
                     attachments.setStep(Step.GettingSectionSize);
                     attachments.setTotalSize(Long.BYTES);
-                    attachments.setParameters(parameters);  //PROPAGARE I PARAMETRI
+                    attachments.setParameters(parameters); //PROPAGARE I PARAMETRI
                     attachments.setSections(null);
                     attachments.setList(null);
 
@@ -1247,7 +1248,6 @@ public class Server
                   //Non abbiamo finito di mandare il numero di sezioni
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  println("res: " + res);
                   continue;
                 }
                 else
@@ -1305,7 +1305,6 @@ public class Server
                   //Non abbiamo finito di mandare la dimensione della sezione
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  println("res: " + res);
                   continue;
                 }
                 else
@@ -1352,7 +1351,6 @@ public class Server
                   //Non abbiamo finito di mandare il numero identificativo di sezione
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  println("res: " + res);
                   continue;
                 }
                 else
@@ -1391,7 +1389,6 @@ public class Server
                   //Non abbiamo finito di mandare l'indirizzo Multicast
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  println("res: " + res);
                   continue;
                 }
                 else
@@ -1428,7 +1425,6 @@ public class Server
                   //Non abbiamo finito di mandare lo stato di modifica sezione
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  println("res: " + res);
                   continue;
                 }
                 else
@@ -1448,8 +1444,9 @@ public class Server
                     buffer = ByteBuffer.allocate(Math.toIntExact(dimensioneFile));
 
                     while(buffer.hasRemaining())
-                      fileChannel.read(buffer);
-
+                    {
+                      println("Read " + fileChannel.read(buffer) + " from file");
+                    }
                     buffer.flip();
 
                     //Il buffer è sufficientemente grande per contenere l'intero file
@@ -1475,11 +1472,9 @@ public class Server
 
                 if(res < remainingBytes)
                 {
-                  printErr("REMAINING BYTES: " + remainingBytes + "RES: " + res);
                   //Non abbiamo finito di mandare la sezione
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  println("res: " + res);
                   continue;
                 }
                 else
@@ -1487,7 +1482,7 @@ public class Server
                   //Abbiamo inviato l'intera sezione
                   //Vedo se bisogna o meno inviare un'altra sezione
                   sezioni = attachments.getSections();
-                  //Rimuovo la sezione perchè è stata appena inviata SOPRA
+                  //Rimuovo la sezione perchè è stata appena inviata
                   sezioni.remove();
                   if(sezioni.size() > 0)
                   {
@@ -1513,7 +1508,6 @@ public class Server
                       FileChannel fileChannel = FileChannel.open(filePath);
                       long dimensioneFile = fileChannel.size();
 
-                      println("DIMFILE: " + dimensioneFile);
                       buffer = ByteBuffer.allocate(Long.BYTES);
                       buffer.putLong(dimensioneFile);
                       buffer.flip();
@@ -1557,7 +1551,6 @@ public class Server
                   //Non abbiamo finito di mandare la dimensione della lista
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  println("res: " + res);
                   continue;
                 }
                 else
@@ -1589,7 +1582,6 @@ public class Server
                   //Non abbiamo finito di mandare la lista
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  println("res: " + res);
                   continue;
                 }
                 else

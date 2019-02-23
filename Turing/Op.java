@@ -19,6 +19,8 @@ public enum Op
   SuccessfullySentMessage,    // Invio messaggio avvenuto con successo
   SuccessfullyReceivedMessage,// Ricezione messaggio avvenuta con successo
   SuccessfullyShownHelp,      // Messaggio di Help visualizzato con successo
+  SuccessfullyPrintedEditing,   // Messaggio di sezione modificata attualmente
+                              // visualizzato con successo
   WrongPassword,              // Password non corretta
   UserDoesNotExists,          // L'utente non esiste
   NicknameAlreadyExists,      // Esiste già l'utente

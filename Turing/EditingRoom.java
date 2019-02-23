@@ -74,7 +74,8 @@ class EditingRoom
         {
           case "join":
             multicastSocket.joinGroup(InetAddress.getByName(splitted[1]));
-            System.out.println("Joined " + splitted[1]);
+            System.out.println("[ThreadReceiver] La chat è stata instaurata su " +
+                    "indirizzo multicast " + splitted[1]);
             assert (joinedAddresses.size() == 0);
             joinedAddresses.addLast(splitted[1]);
             break;
@@ -82,7 +83,8 @@ class EditingRoom
             assert(joinedAddresses.size() == 1);
             String address = joinedAddresses.remove();
             multicastSocket.leaveGroup(InetAddress.getByName(address));
-            System.out.println("Left " + address);
+            System.out.println("[ThreadReceiver] La chat è stata abbandonata su " +
+                    "indirizzo multicast " + address);
             break;
           default:
             break;

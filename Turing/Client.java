@@ -32,7 +32,6 @@ public class Client
   private static int DEFAULT_RMI_PORT = 51812; //Porta RMI
   private static String DEFAULT_DELIMITER = "#";
   private static String DEFAULT_INTERIOR_DELIMITER = ":";
-  private static int DEFAULT_BUFFER_SIZE = 4096;
   private static String DEFAULT_PARENT_FOLDER = "518111_ClientDirs";
 
   private static Pattern validPattern = Pattern.compile("[A-Za-z0-9_]+");
@@ -64,8 +63,8 @@ public class Client
     ByteBuffer buffer1 = ByteBuffer.wrap(operation);
     try
     {
-      printErr("Written " + client.write(bufferDimensione) + " bytes");
-      printErr("Written " + client.write(buffer1) + " bytes");
+      client.write(bufferDimensione);
+      client.write(buffer1);
       return Op.SuccessfullySent;
     }
     catch(IOException e)
@@ -187,7 +186,7 @@ public class Client
     return Op.SuccessfullyShownHelp;
   }
 
-  private static Op handleRegister(String[] splitted)
+  private static Op handleRegister(String[] splitted, String host, int rmiPort)
   {
     //Controllo il numero di parametri
     if(splitted.length != 3)
@@ -208,7 +207,7 @@ public class Client
     //REGISTRAZIONE RMI
     try
     {
-      Registry registry = LocateRegistry.getRegistry(DEFAULT_HOST, DEFAULT_RMI_PORT);
+      Registry registry = LocateRegistry.getRegistry(host, rmiPort);
       RegUtenteInterface stub = (RegUtenteInterface) registry.lookup("RegUtente");
       return stub.registerUser(username, password);
     }
@@ -239,9 +238,7 @@ public class Client
     //login#username#password
     StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
     joiner.add(Op.Login.toString()).add(username).add(password);
-    println("FORMATO: " + joiner);
     Op resultSend = sendRequest(joiner.toString(), client);
-    println(resultSend);
 
     return receiveOutcome(client);
   }
@@ -253,7 +250,6 @@ public class Client
     StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
     joiner.add(Op.Logout.toString());
     Op result = sendRequest(joiner.toString(), client);
-    println(result);
 
     return receiveOutcome(client);
   }
@@ -298,7 +294,6 @@ public class Client
     joiner.add(Op.Create.toString()).add(nomeDocumento).add(splitted[2]);
 
     Op result = sendRequest(joiner.toString(), client);
-    println(result);
 
     return receiveOutcome(client);
 
@@ -328,7 +323,6 @@ public class Client
     joiner.add(Op.Share.toString()).add(nomeDocumento).add(username);
 
     Op result = sendRequest(joiner.toString(), client);
-    println(result);
 
     return receiveOutcome(client);
 
@@ -378,7 +372,6 @@ public class Client
       joiner.add(splitted[2]);
 
     Op result = sendRequest(joiner.toString(), client);
-    println(result);
 
     return receiveOutcome(client);
   }
@@ -480,7 +473,6 @@ public class Client
         while(dimensioneFile > 0)
         {
           buffer.clear();
-          printErr("DA RICEVERE " + dimensioneFile + " bytes");
           res = client.read(buffer);
           if(res < 0)
           {
@@ -498,11 +490,11 @@ public class Client
           }
         }
         fileChannel.close();
-        printErr("Ricevuti " + res + " bytes");
-        printErr("La sezione " + nomeDocumento + "_" + numeroSezione +
+        println("La sezione " + nomeDocumento + "_" + numeroSezione +
+                " (" + res + " bytes) " +
                 (stato == 1 ?
-                              " è attualmente sotto modifiche" :
-                              " non è attualmente sotto modifiche"));
+                              "è attualmente sotto modifiche" :
+                              "non è attualmente sotto modifiche"));
       }
     }
     catch(IOException e)
@@ -520,7 +512,6 @@ public class Client
     StringJoiner joiner = new StringJoiner(DEFAULT_DELIMITER);
     joiner.add(Op.List.toString());
     Op result = sendRequest(joiner.toString(), client);
-    println(result);
 
     return receiveOutcome(client);
   }
@@ -621,7 +612,6 @@ public class Client
     joiner.add(Op.Edit.toString()).add(nomeDocumento).add(splitted[2]);
 
     Op result = sendRequest(joiner.toString(), client);
-    println(result);
 
     return receiveOutcome(client);
 
@@ -666,7 +656,6 @@ public class Client
     joiner.add(Op.EndEdit.toString()).add(nomeDocumento).add(splitted[2]);
 
     Op result = sendRequest(joiner.toString(), client);
-    println(result);
 
     return receiveOutcome(client);
   }
@@ -704,19 +693,20 @@ public class Client
 
       //Decido di bufferizzare l'intero file
       ByteBuffer buffer = ByteBuffer.allocate(Math.toIntExact(dimensioneFile));
-      println("DIMENSIONE FILE: " + dimensioneFile + " bytes");
       int bytesReadFromFile = 0;
       while(dimensioneFile > bytesReadFromFile )
       {
         bytesReadFromFile += fileChannel.read(buffer);
+        println("Read " + bytesReadFromFile + "/" + dimensioneFile + " bytes " +
+                "from file");
       }
 
       fileChannel.close();
 
       buffer.flip();
 
-      printErr("Written " + client.write(bufferDimensione) + " bytes");
-      printErr("Written " + client.write(buffer) + " bytes");
+      client.write(bufferDimensione);
+      client.write(buffer);
       return Op.SuccessfullySentSection;
     }
     catch(IOException e)
@@ -727,7 +717,8 @@ public class Client
   }
 
   private static Op handleSend(String[] splitted, SocketChannel client,
-                               String loggedInNickname, EditingRoom editingRoom)
+                               String loggedInNickname, EditingRoom editingRoom,
+                               int clientPort)
   {
     //Controllo il numero di parametri
     if(splitted.length != 2)
@@ -768,7 +759,7 @@ public class Client
       DatagramPacket packetToSend = new DatagramPacket(
             builder.toString().getBytes(StandardCharsets.UTF_8),
             builder.toString().getBytes(StandardCharsets.UTF_8).length,
-            InetAddress.getByName(editingRoom.getMulticastAddress()), DEFAULT_PORT);
+            InetAddress.getByName(editingRoom.getMulticastAddress()), clientPort);
 
       editingRoom.getMulticastSocket().send(packetToSend);
     }
@@ -801,10 +792,68 @@ public class Client
     return Op.SuccessfullyReceivedMessage;
   }
 
+  private static Op handlePrintEditing(String sectionBeingEdited)
+  {
+    println("Stai attualmente editando " + sectionBeingEdited);
+    return Op.SuccessfullyPrintedEditing;
+  }
+
   public static void main(String[] args)
   {
+    String host;
+    int clientPort;
+    int rmiPort;
+    try
+    {
+      if(args.length == 0)
+      {
+        //Non ho passato argomenti
+        host = DEFAULT_HOST;
+        clientPort = DEFAULT_PORT;
+        rmiPort = DEFAULT_RMI_PORT;
+        println("No arguments specified, using default host " + DEFAULT_HOST +
+                ", default port number " + DEFAULT_PORT + " and default RMI " +
+                "port number " + DEFAULT_RMI_PORT);
+      }
+      else if(args.length == 1)
+      {
+        //Ho passato solo il nome dell'host
+        host = args[0];
+        clientPort = DEFAULT_PORT;
+        rmiPort = DEFAULT_RMI_PORT;
+        println("Will connect to chosen host " + host + ", default port number " +
+                DEFAULT_PORT + " and default RMI port number " + DEFAULT_RMI_PORT) ;
+      }
+      else if(args.length == 2)
+      {
+        //Ho passato il nome host e numero di porta
+        host = args[0];
+        clientPort = Integer.parseInt(args[1]);
+        rmiPort = DEFAULT_RMI_PORT;
+        println("Will connect to chosen host " + host + ", chosen port number " +
+                clientPort + " and default RMI port number " + DEFAULT_RMI_PORT);
+      }
+      else if(args.length == 3)
+      {
+        host = args[0];
+        clientPort = Integer.parseInt(args[1]);
+        rmiPort = Integer.parseInt(args[2]);
+        println("Will connect to chosen host " + host + ", chosen port number " +
+                clientPort + " and chosen RMI port number " + rmiPort);
+      }
+      else
+      {
+        println("Usage: java Client [host] [port_number] [RMI_port_number]");
+        return;
+      }
+    }
+    catch(NumberFormatException e)
+    {
+      printErr("Usage: java Client [host] [port_number] [RMI_port_number]");
+      return;
+    }
 
-    SocketAddress address = new InetSocketAddress(DEFAULT_HOST, DEFAULT_PORT);
+    SocketAddress address = new InetSocketAddress(host, clientPort);
     SocketChannel client = null;
     try
     {
@@ -812,7 +861,7 @@ public class Client
     }
     catch(ConnectException e1)
     {
-      printErr("Connection refused on port " + DEFAULT_PORT);
+      printErr("Connection refused on address " + address);
       printErr("Exiting...");
       return;
     }
@@ -824,12 +873,13 @@ public class Client
     println("Successfuly connected at " + address);
     println("Use turing --help to view all available commands");
 
-    EditingRoom editingRoom = new EditingRoom(false, DEFAULT_PORT);
+    EditingRoom editingRoom = new EditingRoom(false, clientPort);
 
     BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
     String stdin;
 
     String loggedInNickname = null;
+    String sectionBeingEdited = null;
 
     LinkedBlockingQueue<DatagramPacket> receivedPacketsQueue =
             new LinkedBlockingQueue<>();
@@ -863,7 +913,7 @@ public class Client
             }
             else
             {
-              result = handleRegister(splitted);
+              result = handleRegister(splitted, host, rmiPort);
               if(result == Op.SuccessfullyRegistered)
               {
                 println("Registrazione eseguita con successo.");
@@ -941,7 +991,8 @@ public class Client
               }
               else
               {
-                println("Documento " + splitted[1] + " scaricato con successo");
+                println("L'intero documento " + splitted[1] +
+                        " è stato scaricato con successo");
               }
             }
             else
@@ -974,15 +1025,14 @@ public class Client
                       editingRoom, receivedMulticastAddress);
               if(result_2 == Op.SuccessfullyReceivedSections)
               {
-                println(receivedMulticastAddress.toString());
-
                 editingRoom.joinGroup(receivedMulticastAddress.toString());
 
-
+                sectionBeingEdited = "la sezione " + splitted[2] + " del documento " +
+                        splitted[1];
                 println("Sezione " + splitted[2] + " del documento " +
                         splitted[1] + " scaricata con successo");
-                println("La chat è stata instaurata su indirizzo multicast " +
-                        editingRoom.getMulticastAddress());
+//                println("La chat è stata instaurata su indirizzo multicast " +
+//                        editingRoom.getMulticastAddress());
               }
               else
               {
@@ -1006,6 +1056,7 @@ public class Client
               if(result_2 == Op.SuccessfullySentSection)
               {
                 editingRoom.leaveGroup();
+                sectionBeingEdited = "nessuna sezione";
                 println("Sezione " + splitted[2] + " del documento " +
                         splitted[1] + " aggiornata con successo.");
               }
@@ -1022,7 +1073,8 @@ public class Client
 
           case "send" :
             splitted = stdin.split("\\s+", 2);
-            result = handleSend(splitted, client, loggedInNickname, editingRoom);
+            result = handleSend(splitted, client, loggedInNickname,
+                    editingRoom, clientPort);
             if(result == Op.SuccessfullySentMessage)
             {
               println("Messaggio inviato sulla chat.");
@@ -1047,7 +1099,7 @@ public class Client
             break;
 
           case "editing" :
-            //result = handleEditing();
+            result = handlePrintEditing(sectionBeingEdited);
             break;
 
           default:
