@@ -8,19 +8,16 @@ class Attachment
   private int remainingBytes;
   private ByteBuffer buffer;
   private Step step;
-  private int totalSize;
   private String[] parameters;
   private LinkedList<Sezione> sections;
   private String list;
 
   Attachment(int remainingBytes, ByteBuffer buffer, Step step,
-             int totalSize, String[] parameters,
-             LinkedList<Sezione> sections, String list)
+             String[] parameters, LinkedList<Sezione> sections, String list)
   {
     this.remainingBytes = remainingBytes;
     this.buffer = buffer;
     this.step = step;
-    this.totalSize = totalSize;
     this.parameters = parameters;
     this.sections = sections;
     this.list = list;
@@ -54,16 +51,6 @@ class Attachment
   void setStep(Step step)
   {
     this.step = step;
-  }
-
-  int getTotalSize()
-  {
-    return totalSize;
-  }
-
-  void setTotalSize(int totalSize)
-  {
-    this.totalSize = totalSize;
   }
 
   String[] getParameters()

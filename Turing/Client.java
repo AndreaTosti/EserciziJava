@@ -8,6 +8,7 @@ import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.channels.UnresolvedAddressException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -859,7 +860,7 @@ public class Client
     {
       client = SocketChannel.open(address);
     }
-    catch(ConnectException e1)
+    catch(ConnectException | UnresolvedAddressException e1)
     {
       printErr("Connection refused on address " + address);
       printErr("Exiting...");
@@ -879,7 +880,7 @@ public class Client
     String stdin;
 
     String loggedInNickname = null;
-    String sectionBeingEdited = null;
+    String sectionBeingEdited = "nessuna sezione";
 
     LinkedBlockingQueue<DatagramPacket> receivedPacketsQueue =
             new LinkedBlockingQueue<>();
@@ -1031,8 +1032,6 @@ public class Client
                         splitted[1];
                 println("Sezione " + splitted[2] + " del documento " +
                         splitted[1] + " scaricata con successo");
-//                println("La chat è stata instaurata su indirizzo multicast " +
-//                        editingRoom.getMulticastAddress());
               }
               else
               {

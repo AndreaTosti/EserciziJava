@@ -541,7 +541,6 @@ public class Server
                     Long.BYTES,
                     ByteBuffer.allocate(Long.BYTES),
                     Step.WaitingForMessageSize,
-                    Long.BYTES,
                     null,
                     null,
                     null
@@ -560,7 +559,6 @@ public class Server
             int remainingBytes     =  attachments.getRemainingBytes();
             ByteBuffer buffer      =  attachments.getBuffer();
             Step step              =  attachments.getStep();
-            int totalSize          =  attachments.getTotalSize();
             String[] parameters    =  attachments.getParameters();
             String list;
 
@@ -588,7 +586,6 @@ public class Server
                     //Non abbiamo ancora tutta la dimensione del messaggio
                     remainingBytes -= res;
                     attachments.setRemainingBytes(remainingBytes);
-                    println("Read " + res + " bytes");
                     continue;
                   }
                   else
@@ -600,7 +597,6 @@ public class Server
                     attachments.setRemainingBytes(messageSize);
                     attachments.setBuffer(ByteBuffer.allocate(messageSize));
                     attachments.setStep(Step.WaitingForMessage);
-                    attachments.setTotalSize(messageSize);
                     attachments.setParameters(null);
                     attachments.setList(null);
                     channel.register(selector, SelectionKey.OP_READ, attachments);
@@ -630,7 +626,6 @@ public class Server
                       //Non abbiamo ancora ricevuto il messaggio per intero
                       remainingBytes -= res;
                       attachments.setRemainingBytes(remainingBytes);
-                      println("Read " + res + " bytes");
                       continue;
                     }
                     else
@@ -639,7 +634,7 @@ public class Server
                       //Bisogna elaborare l'operazione richiesta
                       buffer.flip();
                       String toSplit = new String(buffer.array(), 0,
-                              totalSize, StandardCharsets.ISO_8859_1);
+                              buffer.array().length, StandardCharsets.ISO_8859_1);
                       String[] splitted = toSplit.split(DEFAULT_DELIMITER);
                       Op requestedOperation = Op.valueOf(splitted[0]);
                       println("Requested Operation : " +
@@ -722,7 +717,6 @@ public class Server
                         attachments.setRemainingBytes(buffer.array().length);
                         attachments.setBuffer(buffer);
                         attachments.setStep(Step.SendingNotificationOpSize);
-                        attachments.setTotalSize(buffer.array().length);
                         attachments.setParameters(newSplitted);
                       }
                       else
@@ -734,7 +728,6 @@ public class Server
                         attachments.setRemainingBytes(buffer.array().length);
                         attachments.setBuffer(buffer);
                         attachments.setStep(Step.SendingOutcomeSize);
-                        attachments.setTotalSize(buffer.array().length);
                         attachments.setParameters(newSplitted);
                       }
                       channel.register(selector, SelectionKey.OP_WRITE, attachments);
@@ -779,7 +772,6 @@ public class Server
                     attachments.setRemainingBytes(sectionSize);
                     attachments.setBuffer(ByteBuffer.allocate(sectionSize));
                     attachments.setStep(Step.GettingSection);
-                    attachments.setTotalSize(sectionSize);
                     attachments.setParameters(parameters); //Propagare i parametri
                     attachments.setList(null);
                     channel.register(selector, SelectionKey.OP_READ, attachments);
@@ -838,7 +830,6 @@ public class Server
                       attachments.setRemainingBytes(Long.BYTES);
                       attachments.setBuffer(ByteBuffer.allocate(Long.BYTES));
                       attachments.setStep(Step.WaitingForMessageSize);
-                      attachments.setTotalSize(Long.BYTES);
                       attachments.setParameters(null);
                       attachments.setSections(null);
                       attachments.setList(null);
@@ -867,7 +858,6 @@ public class Server
             int remainingBytes     =  attachments.getRemainingBytes();
             ByteBuffer buffer      =  attachments.getBuffer();
             Step step              =  attachments.getStep();
-            int totalSize;
             String list;
 
             int res;
@@ -884,7 +874,6 @@ public class Server
                   //Non abbiamo finito di inviare la dimensione dell'Op di notifica
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  println("res: " + res);
                   continue;
                 }
                 else
@@ -898,7 +887,6 @@ public class Server
                   attachments.setRemainingBytes(buffer.array().length);
                   attachments.setBuffer(buffer);
                   attachments.setStep(Step.SendingNotificationOp);
-                  attachments.setTotalSize(buffer.array().length);
                   attachments.setParameters(parameters);
 
                   channel.register(selector, SelectionKey.OP_WRITE, attachments);
@@ -915,7 +903,6 @@ public class Server
                   //Non abbiamo finito di inviare l'Op di notifica
                   remainingBytes -= res;
                   attachments.setRemainingBytes(remainingBytes);
-                  println("res: " + res);
                   continue;
                 }
                 else
@@ -932,7 +919,6 @@ public class Server
                   attachments.setRemainingBytes(buffer.array().length);
                   attachments.setBuffer(buffer);
                   attachments.setStep(Step.SendingNotificationSize);
-                  attachments.setTotalSize(buffer.array().length);
                   attachments.setParameters(parameters);
 
                   channel.register(selector, SelectionKey.OP_WRITE, attachments);
@@ -961,7 +947,6 @@ public class Server
                   attachments.setRemainingBytes(buffer.array().length);
                   attachments.setBuffer(buffer);
                   attachments.setStep(Step.SendingNotification);
-                  attachments.setTotalSize(buffer.array().length);
                   attachments.setParameters(parameters);
 
                   channel.register(selector, SelectionKey.OP_WRITE, attachments);
@@ -993,7 +978,6 @@ public class Server
                   attachments.setRemainingBytes(buffer.array().length);
                   attachments.setBuffer(buffer);
                   attachments.setStep(Step.SendingOutcomeSize);
-                  attachments.setTotalSize(buffer.array().length);
                   attachments.setParameters(parameters);
 
                   channel.register(selector, SelectionKey.OP_WRITE, attachments);
@@ -1022,7 +1006,6 @@ public class Server
                   attachments.setRemainingBytes(buffer.array().length);
                   attachments.setBuffer(buffer);
                   attachments.setStep(Step.SendingOutcome);
-                  attachments.setTotalSize(buffer.array().length);
                   attachments.setParameters(parameters);
 
                   channel.register(selector, SelectionKey.OP_WRITE, attachments);
@@ -1081,7 +1064,6 @@ public class Server
                     attachments.setRemainingBytes(buffer.array().length);
                     attachments.setBuffer(buffer);
                     attachments.setStep(Step.SendingNumberOfSections);
-                    attachments.setTotalSize(buffer.array().length);
                     attachments.setParameters(null);
                     attachments.setList(null);
 
@@ -1144,7 +1126,6 @@ public class Server
                     attachments.setRemainingBytes(buffer.array().length);
                     attachments.setBuffer(buffer);
                     attachments.setStep(Step.SendingListSize);
-                    attachments.setTotalSize(buffer.array().length);
                     attachments.setParameters(null);
                     attachments.setList(joiner.toString());
 
@@ -1204,7 +1185,6 @@ public class Server
                     attachments.setRemainingBytes(buffer.array().length);
                     attachments.setBuffer(buffer);
                     attachments.setStep(Step.SendingNumberOfSections);
-                    attachments.setTotalSize(buffer.array().length);
                     attachments.setParameters(null);
                     attachments.setList(null);
 
@@ -1217,7 +1197,6 @@ public class Server
                     attachments.setRemainingBytes(Long.BYTES);
                     attachments.setBuffer(ByteBuffer.allocate(Long.BYTES));
                     attachments.setStep(Step.GettingSectionSize);
-                    attachments.setTotalSize(Long.BYTES);
                     attachments.setParameters(parameters); //PROPAGARE I PARAMETRI
                     attachments.setSections(null);
                     attachments.setList(null);
@@ -1230,7 +1209,6 @@ public class Server
                     attachments.setRemainingBytes(Long.BYTES);
                     attachments.setBuffer(ByteBuffer.allocate(Long.BYTES));
                     attachments.setStep(Step.WaitingForMessageSize);
-                    attachments.setTotalSize(Long.BYTES);
                     attachments.setParameters(null);
                     attachments.setSections(null);
                     attachments.setList(null);
@@ -1283,7 +1261,6 @@ public class Server
                     attachments.setRemainingBytes(buffer.array().length);
                     attachments.setBuffer(buffer);
                     attachments.setStep(Step.SendingSectionSize);
-                    attachments.setTotalSize(buffer.array().length);
                     attachments.setSections(sezioni); //Parametri
 
                     channel.register(selector, SelectionKey.OP_WRITE, attachments);
@@ -1329,7 +1306,6 @@ public class Server
                     attachments.setRemainingBytes(buffer.array().length);
                     attachments.setBuffer(buffer);
                     attachments.setStep(Step.SendingSectionNumber);
-                    attachments.setTotalSize(buffer.array().length);
                     attachments.setSections(sezioni);
 
                     channel.register(selector, SelectionKey.OP_WRITE, attachments);
@@ -1372,7 +1348,6 @@ public class Server
                   attachments.setRemainingBytes(buffer.array().length);
                   attachments.setBuffer(buffer);
                   attachments.setStep(Step.SendingMulticastAddress);
-                  attachments.setTotalSize(buffer.array().length);
                   attachments.setSections(sezioni);
 
                   channel.register(selector, SelectionKey.OP_WRITE, attachments);
@@ -1409,7 +1384,6 @@ public class Server
                   attachments.setRemainingBytes(buffer.array().length);
                   attachments.setBuffer(buffer);
                   attachments.setStep(Step.SendingSectionStatus);
-                  attachments.setTotalSize(buffer.array().length);
                   attachments.setSections(sezioni);
 
                   channel.register(selector, SelectionKey.OP_WRITE, attachments);
@@ -1453,7 +1427,6 @@ public class Server
                     attachments.setRemainingBytes(buffer.array().length);
                     attachments.setBuffer(buffer);
                     attachments.setStep(Step.SendingSection);
-                    attachments.setTotalSize(buffer.array().length);
                     attachments.setSections(sezioni);
 
                     channel.register(selector, SelectionKey.OP_WRITE, attachments);
@@ -1515,7 +1488,6 @@ public class Server
                       attachments.setRemainingBytes(buffer.array().length);
                       attachments.setBuffer(buffer);
                       attachments.setStep(Step.SendingSectionSize);
-                      attachments.setTotalSize(buffer.array().length);
                       attachments.setSections(sezioni);
 
                       channel.register(selector, SelectionKey.OP_WRITE, attachments);
@@ -1533,7 +1505,6 @@ public class Server
                     attachments.setRemainingBytes(Long.BYTES);
                     attachments.setBuffer(ByteBuffer.allocate(Long.BYTES));
                     attachments.setStep(Step.WaitingForMessageSize);
-                    attachments.setTotalSize(Long.BYTES);
                     attachments.setSections(null);
                     attachments.setList(null);
 
@@ -1564,7 +1535,6 @@ public class Server
                   attachments.setRemainingBytes(buffer.array().length);
                   attachments.setBuffer(buffer);
                   attachments.setStep(Step.SendingList);
-                  attachments.setTotalSize(buffer.array().length);
                   attachments.setSections(null);
                   attachments.setList(null);
 
@@ -1591,7 +1561,6 @@ public class Server
                   attachments.setRemainingBytes(Long.BYTES);
                   attachments.setBuffer(ByteBuffer.allocate(Long.BYTES));
                   attachments.setStep(Step.WaitingForMessageSize);
-                  attachments.setTotalSize(Long.BYTES);
                   attachments.setSections(null);
                   attachments.setList(null);
 
