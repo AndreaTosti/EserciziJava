@@ -37,19 +37,19 @@ public class Client
 
   private static Pattern validPattern = Pattern.compile("[A-Za-z0-9_]+");
 
-  static void println(Object o)
+  private static void println(Object o)
   {
     System.out.println("[Client] " + o);
   }
 
-  static void printErr(Object o)
+  private static void printErr(Object o)
   {
     System.err.println("[Client-Error] " + o);
   }
 
-  private static boolean isAValidString(String string)
+  private static boolean isNotAValidString(String string)
   {
-    return validPattern.matcher(string).matches();
+    return !(validPattern.matcher(string).matches());
   }
 
   private static Op sendRequest(String joinedString, SocketChannel client)
@@ -199,7 +199,7 @@ public class Client
     String username = splitted[1];
     String password = splitted[2];
 
-    if(!isAValidString(username) || !isAValidString(password))
+    if(isNotAValidString(username) || isNotAValidString(password))
     {
       printErr("Usage: register <username> <password>");
       return Op.UsageError;
@@ -266,7 +266,7 @@ public class Client
 
     String nomeDocumento = splitted[1];
 
-    if(!isAValidString(nomeDocumento))
+    if(isNotAValidString(nomeDocumento))
     {
       printErr("Usage: create <doc> <numsezioni>");
       return Op.UsageError;
@@ -312,7 +312,7 @@ public class Client
     String nomeDocumento = splitted[1];
     String username = splitted[2];
 
-    if(!isAValidString(nomeDocumento) || !isAValidString((username)))
+    if(isNotAValidString(nomeDocumento) || isNotAValidString((username)))
     {
       printErr("Usage: share <doc> <username>");
       return Op.UsageError;
@@ -340,7 +340,7 @@ public class Client
 
     String nomeDocumento = splitted[1];
 
-    if(!isAValidString(nomeDocumento))
+    if(isNotAValidString(nomeDocumento))
     {
       printErr("Usage: show <doc> [<sec>]");
       return Op.UsageError;
@@ -431,7 +431,7 @@ public class Client
           StringBuilder sb = new StringBuilder(15);
           for (int j = 0; j < 4; j++)
           {
-            sb.insert(0,Long.toString(longIP & 0xff));
+            sb.insert(0,(longIP & 0xff));
             if (j < 3) {
               sb.insert(0,'.');
             }
@@ -470,7 +470,6 @@ public class Client
                 StandardOpenOption.WRITE));
 
         counter = 0;
-        res = 0;
         while(dimensioneFile > 0)
         {
           buffer.clear();
@@ -494,8 +493,8 @@ public class Client
         println("La sezione " + nomeDocumento + "_" + numeroSezione +
                 " (" + counter + " bytes) " +
                 (stato == 1 ?
-                              "è attualmente sotto modifiche" :
-                              "non è attualmente sotto modifiche"));
+                              "e' attualmente sotto modifiche" :
+                              "non e' attualmente sotto modifiche"));
       }
     }
     catch(IOException e)
@@ -562,7 +561,7 @@ public class Client
 
       String result = builder.toString();
       if(result.equals(""))
-        println("Non ci sono documenti di cui si è creatori o di cui si collabora");
+        println("Non ci sono documenti di cui si e' creatori o di cui si collabora");
       else
         println(builder.toString());
       return Op.SuccessfullyReceivedList;
@@ -585,7 +584,7 @@ public class Client
 
     String nomeDocumento = splitted[1];
 
-    if(!isAValidString(nomeDocumento))
+    if(isNotAValidString(nomeDocumento))
     {
       printErr("Usage: edit <doc> <sec>");
       return Op.UsageError;
@@ -629,7 +628,7 @@ public class Client
 
     String nomeDocumento = splitted[1];
 
-    if(!isAValidString((nomeDocumento)))
+    if(isNotAValidString(nomeDocumento))
     {
       printErr("Usage: end-edit <doc> <sec>");
       return Op.UsageError;
@@ -740,14 +739,7 @@ public class Client
     builder.append(DEFAULT_DELIMITER);
 
     builder.append("[");
-    try
-    {
-      builder.append(editingRoom.getMulticastAddress());
-    }
-    catch(InterruptedException e)
-    {
-      e.printStackTrace();
-    }
+    builder.append(editingRoom.getMulticastAddress());
     builder.append("] ");
     builder.append(new SimpleDateFormat("dd-MM-yyyy HH:mm:ss",
             Locale.ITALY).format(new Date()));
@@ -764,7 +756,7 @@ public class Client
 
       editingRoom.getMulticastSocket().send(packetToSend);
     }
-    catch(InterruptedException | IOException e)
+    catch(IOException e)
     {
       e.printStackTrace();
       return Op.Error;
@@ -894,7 +886,7 @@ public class Client
     {
       //Input da linea di comando
       Op result = null;
-      Op result_2 = null;
+      Op result_2;
 
       while(result != Op.ClosedConnection)
       {
@@ -986,14 +978,22 @@ public class Client
               StringBuilder receivedMulticastAddress = new StringBuilder();
               result_2 = receiveSections(splitted, client, loggedInNickname,
                       editingRoom, receivedMulticastAddress);
-              if(splitted.length == 3)
+
+              if(result_2 == Op.SuccessfullyReceivedSections)
               {
-                println("Sezione " + splitted[2] + " scaricata con successo");
+                if(splitted.length == 3)
+                {
+                  println("Sezione " + splitted[2] + " scaricata con successo");
+                }
+                else
+                {
+                  println("L'intero documento " + splitted[1] +
+                          " e' stato scaricato con successo");
+                }
               }
               else
               {
-                println("L'intero documento " + splitted[1] +
-                        " è stato scaricato con successo");
+                Op.print(result_2);
               }
             }
             else
@@ -1008,6 +1008,10 @@ public class Client
             {
               assert(client != null);
               result_2 = receiveList(client);
+              if(result_2 != Op.SuccessfullyReceivedList)
+              {
+                Op.print(result_2);
+              }
             }
             else
             {

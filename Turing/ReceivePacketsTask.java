@@ -24,14 +24,7 @@ public class ReceivePacketsTask implements Runnable
   @Override
   public void run()
   {
-    MulticastSocket multicastSocket = null;
-    try
-    {
-      multicastSocket = editingRoom.getMulticastSocket();
-    }catch(InterruptedException e)
-    {
-      e.printStackTrace();
-    }
+    MulticastSocket multicastSocket = editingRoom.getMulticastSocket();
     while(true)
     {
       try

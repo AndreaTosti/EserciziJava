@@ -79,23 +79,23 @@ public enum Op
         printErr("L'utente specificato non esiste");
         break;
       case NicknameAlreadyExists :
-        printErr("Esiste già un utente con questo nickname");
+        printErr("Esiste gia' un utente con questo nickname");
         break;
       case DocumentAlreadyExists :
-        printErr("Esiste già un documento con questo nome");
+        printErr("Esiste gia' un documento con questo nome");
         break;
       case DirectoryAlreadyExists :
-        printErr("Esiste già una directory con questo nome");
+        printErr("Esiste gia' una directory con questo nome");
         break;
       case NotDocumentCreator :
-        printErr("Privilegi insufficienti: non si è creatori del documento");
+        printErr("Privilegi insufficienti: non si e' creatori del documento");
         break;
       case NotDocumentCreatorNorCollaborator :
-        printErr("Privilegi insufficienti: non si è creatori né collaboratori" +
+        printErr("Privilegi insufficienti: non si e' creatori ne' collaboratori" +
                 " del documento");
         break;
       case SectionUnderModification :
-        printErr("La sezione è attualmente sotto modifica");
+        printErr("La sezione e' attualmente sotto modifica");
         break;
       case Error :
         printErr("Errore non ben specificato");
@@ -104,16 +104,16 @@ public enum Op
         printErr("Errore di utilizzo del comando");
         break;
       case ClosedConnection :
-        printErr("host non più raggiungibile");
+        printErr("host non piu' raggiungibile");
         break;
       case UnknownSession :
         printErr("Sessione inesistente");
         break;
       case AlreadyLoggedIn :
-        printErr("Login già effettuato");
+        printErr("Login gia' effettuato");
         break;
       case CannotLogout :
-        printErr("Impossibile effettuare il logout (non si è nello stato " +
+        printErr("Impossibile effettuare il logout (non si e' nello stato " +
                 " Started o Editing)");
         break;
       case MustBeInStartedState :
@@ -132,11 +132,11 @@ public enum Op
         printErr("La sezione specificata non esiste ");
         break;
       case AlreadyCollaborates :
-        printErr("L'utente specificato collabora già alla modifica del" +
+        printErr("L'utente specificato collabora gia' alla modifica del" +
                 " documento");
         break;
       case CreatorCannotBeCollaborator :
-        printErr("Un creatore non può essere anche collaboratore");
+        printErr("Un creatore non puo' essere anche collaboratore");
         break;
       case NotEditingThisSection :
         printErr("Non si sta attualmente modificando questa sezione");

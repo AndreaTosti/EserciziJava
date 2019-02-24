@@ -32,8 +32,8 @@ class EditingRoom
     {
       e.printStackTrace();
     }
-    requestQueue = new LinkedBlockingQueue<String>();
-    joinedAddresses = new LinkedList<String>();
+    requestQueue = new LinkedBlockingQueue<>();
+    joinedAddresses = new LinkedList<>();
   }
 
   synchronized void joinGroup(String multicastAddress) throws InterruptedException
@@ -74,7 +74,7 @@ class EditingRoom
         {
           case "join":
             multicastSocket.joinGroup(InetAddress.getByName(splitted[1]));
-            System.out.println("[ThreadReceiver] La chat è stata instaurata su " +
+            System.out.println("[ThreadReceiver] La chat e' stata instaurata su " +
                     "indirizzo multicast " + splitted[1]);
             assert (joinedAddresses.size() == 0);
             joinedAddresses.addLast(splitted[1]);
@@ -83,7 +83,7 @@ class EditingRoom
             assert(joinedAddresses.size() == 1);
             String address = joinedAddresses.remove();
             multicastSocket.leaveGroup(InetAddress.getByName(address));
-            System.out.println("[ThreadReceiver] La chat è stata abbandonata su " +
+            System.out.println("[ThreadReceiver] La chat e' stata abbandonata su " +
                     "indirizzo multicast " + address);
             break;
           default:
@@ -100,7 +100,7 @@ class EditingRoom
     return joinedAddresses.size() != 0;
   }
 
-  synchronized void canReceiveAnotherPacket() throws IOException, InterruptedException
+  synchronized void canReceiveAnotherPacket() throws InterruptedException
   {
     while(!computeRequests())
     {
@@ -108,13 +108,13 @@ class EditingRoom
     }
   }
 
-  synchronized String getMulticastAddress() throws InterruptedException
+  synchronized String getMulticastAddress()
   {
     assert(joinedAddresses.size() == 1);
     return joinedAddresses.getFirst();
   }
 
-  synchronized MulticastSocket getMulticastSocket() throws InterruptedException
+  synchronized MulticastSocket getMulticastSocket()
   {
     assert(joinedAddresses.size() == 1);
     return multicastSocket;
