@@ -470,7 +470,8 @@ public class Client
                 StandardOpenOption.WRITE));
 
         counter = 0;
-        while(dimensioneFile > 0)
+
+        do
         {
           buffer.clear();
           res = client.read(buffer);
@@ -488,7 +489,8 @@ public class Client
             }
             dimensioneFile -= res;
           }
-        }
+        }while(dimensioneFile > 0);
+
         fileChannel.close();
         println("La sezione " + nomeDocumento + "_" + numeroSezione +
                 " (" + counter + " bytes) " +
@@ -694,12 +696,13 @@ public class Client
       //Decido di bufferizzare l'intero file
       ByteBuffer buffer = ByteBuffer.allocate(Math.toIntExact(dimensioneFile));
       int bytesReadFromFile = 0;
-      while(dimensioneFile > bytesReadFromFile )
+
+      do
       {
         bytesReadFromFile += fileChannel.read(buffer);
         println("Read " + bytesReadFromFile + "/" + dimensioneFile + " bytes " +
                 "from file");
-      }
+      }while(dimensioneFile > bytesReadFromFile);
 
       fileChannel.close();
 

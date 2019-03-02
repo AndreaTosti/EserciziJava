@@ -20,6 +20,7 @@ import java.util.concurrent.ConcurrentMap;
 
 public class Server
 {
+  private static String DEFAULT_HOST = "localhost"; //Host di Default
   private static int DEFAULT_PORT = 51811; //Porta di Default
   private static int DEFAULT_RMI_PORT = 51812; //Porta RMI
   private static String DEFAULT_DELIMITER = "#";
@@ -432,10 +433,8 @@ public class Server
 
   public static void main(String[] args)
   {
-    //Porta su cui il server si mette in ascolto
+    String host;
     int serverPort;
-
-    //Porta RMI
     int rmiPort;
 
     try
@@ -443,22 +442,40 @@ public class Server
       if(args.length == 0)
       {
         //Non ho passato argomenti
+        host = DEFAULT_HOST;
         serverPort = DEFAULT_PORT;
         rmiPort = DEFAULT_RMI_PORT;
-        println("No arguments specified, using default " + "port number " + DEFAULT_PORT + " and default RMI port number " + +DEFAULT_RMI_PORT);
-      } else if(args.length == 1)
+        println("No arguments specified, using default host " + host + ", " +
+                "default port number " + DEFAULT_PORT +
+                " and default RMI port number " + DEFAULT_RMI_PORT);
+      }
+      else if(args.length == 1)
       {
-        //Ho passato solo il numero di porta
-        serverPort = Integer.parseInt(args[0]);
+        //Ho passato solo l'host
+        host = args[0];
+        serverPort = DEFAULT_PORT;
         rmiPort = DEFAULT_RMI_PORT;
-        println("Listening to chosen port number " + serverPort + " and using " + "default RMI port number " + DEFAULT_RMI_PORT);
+        println("Listening to chosen host " + host + ", default port number " +
+                serverPort + " and " + "default RMI port number " + DEFAULT_RMI_PORT);
       } else if(args.length == 2)
       {
-        //Ho passato il numero di porta e il numero di porta RMI
-        serverPort = Integer.parseInt(args[0]);
-        rmiPort = Integer.parseInt(args[1]);
-        println("Listening to chosen port number " + serverPort + " and chosed " + "RMI port number " + rmiPort);
-      } else
+        //Ho passato l'host e il numero di porta
+        host = args[0];
+        serverPort = Integer.parseInt(args[1]);
+        rmiPort = DEFAULT_RMI_PORT;
+        println("Listening to chosen host " + host + ", chosen port number " +
+                serverPort + " and default " + "RMI port number " + rmiPort);
+      }
+      else if(args.length == 3)
+      {
+        //Ho passato l'host, il numero di porta e il numero di porta RMI
+        host = args[0];
+        serverPort = Integer.parseInt(args[1]);
+        rmiPort = Integer.parseInt(args[2]);
+        println("Listening to chosen host " + host + ", chosen port number " +
+                serverPort + " and chosen RMI port number " + rmiPort);
+      }
+      else
       {
         printErr("Usage: java Server [port_number] [RMI_port_number]");
         return;
@@ -474,6 +491,7 @@ public class Server
     {
       //Registrazione RMI
       RegUtenteImplementation object = new RegUtenteImplementation(users);
+      System.setProperty("java.rmi.server.hostname", host);
       RegUtenteInterface stub =
               (RegUtenteInterface) UnicastRemoteObject.exportObject(object, 0);
       Registry registry = LocateRegistry.createRegistry(rmiPort);
@@ -482,6 +500,10 @@ public class Server
     catch(ExportException e1)
     {
       printErr(e1.toString());
+      printErr("Errore con la Bind, probabilmente la porta RMI è (ancora) in " +
+              " uso da un'altra applicazione");
+      printErr("è consigliato cambiare porta RMI: " +
+              "java Server [port_number] [RMI_port_number]");
       System.exit(1);
     }
     catch(Exception e2)
@@ -506,6 +528,11 @@ public class Server
     catch(IOException e)
     {
       e.printStackTrace();
+      printErr("Errore con la Bind, probabilmente la porta è (ancora) in " +
+              " uso da un'altra applicazione");
+      printErr("è consigliato cambiare porta: " +
+              "java Server [port_number] [RMI_port_number]");
+      System.exit(1);
     }
 
     Op OP = null;
@@ -811,6 +838,13 @@ public class Server
                       Path filePath = Paths.get(DEFAULT_PARENT_FOLDER + File.separator +
                               sezione.getNomeDocumento() + File.separator +
                               sezione.getNomeSezione() + ".txt");
+
+                      Path directoryPath = Paths.get(DEFAULT_PARENT_FOLDER + File.separator +
+                              sezione.getNomeDocumento());
+
+                      if (!Files.exists(directoryPath))
+                        Files.createDirectories(directoryPath);
+
                       FileChannel fileChannel = FileChannel.open(filePath, EnumSet.of(
                               StandardOpenOption.CREATE,
                               StandardOpenOption.TRUNCATE_EXISTING,
@@ -906,7 +940,7 @@ public class Server
                   String[] parameters = attachments.getParameters();
                   String notifica = parameters[parameters.length - 1];
 
-                  byte[] notifyBytes = notifica.toString().getBytes(StandardCharsets.ISO_8859_1);
+                  byte[] notifyBytes = notifica.getBytes(StandardCharsets.ISO_8859_1);
                   buffer = ByteBuffer.allocate(Long.BYTES);
                   buffer.putLong(notifyBytes.length);
                   buffer.flip();
@@ -1559,6 +1593,22 @@ public class Server
         }
         catch(IOException e)
         {
+          //Connessione chiusa dal client
+          SocketChannel channel = (SocketChannel)key.channel();
+          String clientRemoteAddress = null;
+          try
+          {
+            clientRemoteAddress = channel.getRemoteAddress().toString();
+          }
+          catch(IOException e1)
+          {
+            e1.printStackTrace();
+          }
+          Op result = handleClosedConnection(channel);
+          if(result == Op.SuccessfullyRemovedSession)
+            println("Lost connection from Client IP " + clientRemoteAddress);
+          else
+            Op.print(result);
           key.cancel();
           try
           {
