@@ -56,6 +56,12 @@ class EditingRoom
     joiner.add("leave");
     requestQueue.add(joiner.toString());
 
+    //Notifico il threadUDP che c'è una richiesta da elaborare
+    //In realtà non è indispensabile metterlo perchè sicuramente
+    //joinedAddresses > 0
+    //e quindi in canReceiveAnotherPacket() non verrà mai fatta la wait()
+    this.notifyAll();
+
     //Il main deve aspettare che il thread UDP abbia elaborato la richiesta
     while(requestQueue.size() != 0)
       wait();
