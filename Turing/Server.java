@@ -412,7 +412,7 @@ public class Server
 
     sezione.endEdit();
 
-    //Se in quel documento nessuno sta più editando la sezione
+    //Se in quel documento nessuno sta più editando alcuna sezione
     //allora ricicla l'indirizzo IP Multicast
     Sezione[] sezioni = documento.getSezioni();
     boolean recycleIP = true;

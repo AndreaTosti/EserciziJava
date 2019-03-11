@@ -12,7 +12,7 @@ class EditingRoom
   private boolean isEditing;
   private static String DEFAULT_DELIMITER = "#";
 
-  private LinkedBlockingQueue<String> requestQueue;
+  private LinkedList<String> requestQueue;
 
   private LinkedList<String> joinedAddresses;
 
@@ -32,7 +32,7 @@ class EditingRoom
     {
       e.printStackTrace();
     }
-    requestQueue = new LinkedBlockingQueue<>();
+    requestQueue = new LinkedList<>();
     joinedAddresses = new LinkedList<>();
   }
 
@@ -76,7 +76,7 @@ class EditingRoom
             multicastSocket.joinGroup(InetAddress.getByName(splitted[1]));
             System.out.println("[ThreadReceiver] La chat e' stata instaurata su " +
                     "indirizzo multicast " + splitted[1]);
-            assert (joinedAddresses.size() == 0);
+            assert(joinedAddresses.size() == 0);
             joinedAddresses.addLast(splitted[1]);
             break;
           case "leave":

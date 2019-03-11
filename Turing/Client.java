@@ -28,14 +28,19 @@ import java.util.Date;
 
 public class Client
 {
-  private static String DEFAULT_HOST = "localhost";
-  private static int DEFAULT_PORT = 51811; //Porta di Default
-  private static int DEFAULT_RMI_PORT = 51812; //Porta RMI
+  private static String DEFAULT_HOST = "localhost"; //Host di default
+  private static int DEFAULT_PORT = 51811; //Porta di default
+  private static int DEFAULT_RMI_PORT = 51812; //Porta RMI di default
   private static String DEFAULT_DELIMITER = "#";
   private static String DEFAULT_INTERIOR_DELIMITER = ":";
   private static String DEFAULT_PARENT_FOLDER = "518111_ClientDirs";
 
   private static Pattern validPattern = Pattern.compile("[A-Za-z0-9_]+");
+
+  private static boolean isNotAValidString(String string)
+  {
+    return !(validPattern.matcher(string).matches());
+  }
 
   private static void println(Object o)
   {
@@ -47,15 +52,9 @@ public class Client
     System.err.println("[Client-Error] " + o);
   }
 
-  private static boolean isNotAValidString(String string)
-  {
-    return !(validPattern.matcher(string).matches());
-  }
-
   private static Op sendRequest(String joinedString, SocketChannel client)
   {
     byte[] operation = joinedString.getBytes(StandardCharsets.ISO_8859_1);
-    //Invio il numero di bytes dell'operazione
 
     ByteBuffer bufferDimensione = ByteBuffer.allocate(Long.BYTES);
     bufferDimensione.putLong(operation.length);
@@ -170,7 +169,7 @@ public class Client
     }
 
     println("commands:");
-    println("\tregister <username> <password> registra l'utente");
+    println("\tregister <username> <password> registra l'utenteca");
     println("\tlogin <username> <password>    effettua il login");
     println("\tlogout                         effettua il logout");
     println("\tcreate <doc> <numsezioni>      crea un documento");
