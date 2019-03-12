@@ -52,6 +52,20 @@ public class Client
     System.err.println("[Client-Error] " + o);
   }
 
+  private static int read(SocketChannel client, ByteBuffer buffer,
+                          int dimBuffer) throws IOException
+  {
+    int res = 0;
+
+    println("DIM BUFFER: " + dimBuffer);
+    do
+    {
+      res += client.read(buffer);
+    }while(res != dimBuffer && res != -1);
+
+    return res;
+  }
+
   private static Op sendRequest(String joinedString, SocketChannel client)
   {
     byte[] operation = joinedString.getBytes(StandardCharsets.ISO_8859_1);
@@ -63,8 +77,13 @@ public class Client
     ByteBuffer buffer1 = ByteBuffer.wrap(operation);
     try
     {
-      client.write(bufferDimensione);
-      client.write(buffer1);
+
+      while(bufferDimensione.hasRemaining())
+        client.write(bufferDimensione);
+
+      while(buffer1.hasRemaining())
+        client.write(buffer1);
+
       return Op.SuccessfullySent;
     }
     catch(IOException e)
@@ -81,7 +100,9 @@ public class Client
 
     try
     {
-      resD = client.read(bufferDimensione);
+
+      resD = read(client, bufferDimensione, bufferDimensione.capacity());
+
       if(resD < 0)
         return Op.ClosedConnection;
 
@@ -90,7 +111,7 @@ public class Client
 
       ByteBuffer buffer = ByteBuffer.allocate(dimensione);
       int res;
-      res = client.read(buffer);
+      res = read(client, buffer, buffer.capacity());
       if(res < 0)
       {
         return Op.ClosedConnection;
@@ -105,7 +126,8 @@ public class Client
         if(Op.valueOf(result) == Op.newNotification)
         {
           ByteBuffer bufferDimensioneNotifica = ByteBuffer.allocate(Long.BYTES);
-          resN = client.read(bufferDimensioneNotifica);
+          resN =read(client, bufferDimensioneNotifica,
+                  bufferDimensioneNotifica.capacity());
           if(resN < 0)
             return Op.ClosedConnection;
 
@@ -114,7 +136,7 @@ public class Client
                   new Long(bufferDimensioneNotifica.getLong()).intValue();
 
           ByteBuffer bufferNotifica = ByteBuffer.allocate(dimensioneNotifica);
-          res = client.read(bufferNotifica);
+          res = read(client, bufferNotifica, bufferNotifica.capacity());
           if(res < 0)
             return Op.ClosedConnection;
 
@@ -125,7 +147,8 @@ public class Client
 
           //Leggo il risultato dell'operazione richiesta
           ByteBuffer bufferDimensioneRisultato = ByteBuffer.allocate(Long.BYTES);
-          resD2 = client.read(bufferDimensioneRisultato);
+          resD2 = read(client, bufferDimensioneRisultato,
+                  bufferDimensioneRisultato.capacity());
           if(resD2 < 0)
             return Op.ClosedConnection;
 
@@ -134,7 +157,7 @@ public class Client
                   new Long(bufferDimensioneRisultato.getLong()).intValue();
 
           ByteBuffer bufferRisultato = ByteBuffer.allocate(dimensioneRisultato);
-          res = client.read(bufferRisultato);
+          res = read(client, bufferRisultato, bufferRisultato.capacity());
           if(res < 0)
             return Op.ClosedConnection;
 
@@ -385,7 +408,7 @@ public class Client
     int resNi, resD, resNe, resI, resS, res, counter;
     try
     {
-      resNi = client.read(bufferNumSezioni);
+      resNi = read(client, bufferNumSezioni, bufferNumSezioni.capacity());
       if(resNi < 0)
         return Op.ClosedConnection;
 
@@ -399,19 +422,20 @@ public class Client
         ByteBuffer bufferIndirizzoMulticast = ByteBuffer.allocate(Long.BYTES);
         ByteBuffer bufferStato      = ByteBuffer.allocate(Long.BYTES);
 
-        resD = client.read(bufferDimensione);
+        resD = read(client, bufferDimensione, bufferDimensione.capacity());
         if(resD < 0)
           return Op.ClosedConnection;
 
-        resNe = client.read(bufferNumSezione);
+        resNe = read(client, bufferNumSezione, bufferNumSezione.capacity());
         if(resNe < 0)
           return Op.ClosedConnection;
 
-        resI = client.read(bufferIndirizzoMulticast);
+        resI = read(client, bufferIndirizzoMulticast,
+                bufferIndirizzoMulticast.capacity());
         if(resI < 0)
           return Op.ClosedConnection;
 
-        resS = client.read(bufferStato);
+        resS = read(client, bufferStato, bufferStato.capacity());
         if(resS < 0)
           return Op.ClosedConnection;
 
@@ -473,7 +497,7 @@ public class Client
         do
         {
           buffer.clear();
-          res = client.read(buffer);
+          res = read(client, buffer, buffer.capacity());
           if(res < 0)
           {
             return Op.ClosedConnection;
@@ -524,7 +548,7 @@ public class Client
 
     try
     {
-      resD = client.read(bufferDimensione);
+      resD = read(client, bufferDimensione, bufferDimensione.capacity());
       if(resD < 0)
         return Op.ClosedConnection;
 
@@ -532,7 +556,7 @@ public class Client
       int dimensione = new Long(bufferDimensione.getLong()).intValue();
 
       ByteBuffer buffer = ByteBuffer.allocate(dimensione);
-      res = client.read(buffer);
+      res = read(client, buffer, buffer.capacity());
       if(res != dimensione)
         return Op.Error;
 
@@ -707,8 +731,12 @@ public class Client
 
       buffer.flip();
 
-      client.write(bufferDimensione);
-      client.write(buffer);
+      while(bufferDimensione.hasRemaining())
+        client.write(bufferDimensione);
+
+      while(buffer.hasRemaining())
+        client.write(buffer);
+
       return Op.SuccessfullySentSection;
     }
     catch(IOException e)
