@@ -57,10 +57,10 @@ public class Client
   {
     int res = 0;
 
-    println("DIM BUFFER: " + dimBuffer);
     do
     {
       res += client.read(buffer);
+      //println("Read " + res + "/" + dimBuffer + " bytes");
     }while(res != dimBuffer && res != -1);
 
     return res;

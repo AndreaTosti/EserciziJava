@@ -493,7 +493,7 @@ public class Server
       RegUtenteImplementation object = new RegUtenteImplementation(users);
       System.setProperty("java.rmi.server.hostname", host);
       RegUtenteInterface stub =
-              (RegUtenteInterface) UnicastRemoteObject.exportObject(object, 0);
+              (RegUtenteInterface) UnicastRemoteObject.exportObject(object, rmiPort);
       Registry registry = LocateRegistry.createRegistry(rmiPort);
       registry.bind("RegUtente", stub);
     }
