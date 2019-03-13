@@ -485,13 +485,13 @@ public class Server
       return;
     }
 
+    //Registrazione RMI
+    RegUtenteImplementation object = new RegUtenteImplementation(users);
+    RegUtenteInterface stub = null;
     try
     {
-      //Registrazione RMI
-      RegUtenteImplementation object = new RegUtenteImplementation(users);
       System.setProperty("java.rmi.server.hostname", host);
-      RegUtenteInterface stub =
-              (RegUtenteInterface) UnicastRemoteObject.exportObject(object, rmiPort);
+      stub = (RegUtenteInterface) UnicastRemoteObject.exportObject(object, rmiPort);
       Registry registry = LocateRegistry.createRegistry(rmiPort);
       registry.bind("RegUtente", stub);
     }
