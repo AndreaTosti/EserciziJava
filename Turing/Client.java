@@ -920,9 +920,10 @@ public class Client
       while(result != Op.ClosedConnection)
       {
         stdin = reader.readLine();
-        String[] splitted = stdin.split("\\s+");
-        if(splitted == null)
+        if(stdin == null)
           continue;
+
+        String[] splitted = stdin.split("\\s+");
 
         switch(splitted[0].toLowerCase())
         {
