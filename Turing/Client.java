@@ -235,6 +235,7 @@ public class Client
     }
     catch(RemoteException e1)
     {
+      e1.printStackTrace();
       return Op.ClosedConnection;
     }
     catch(NotBoundException e)
