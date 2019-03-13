@@ -563,6 +563,7 @@ public class Server
             SocketChannel client = server.accept();
             println("New connection from Client IP " + client.getRemoteAddress());
             client.configureBlocking(false);
+            client.setOption(StandardSocketOptions.SO_KEEPALIVE, true);
 
             Attachment attachments = new Attachment(
                     Long.BYTES,

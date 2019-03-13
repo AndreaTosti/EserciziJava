@@ -881,6 +881,7 @@ public class Client
     try
     {
       client = SocketChannel.open(address);
+      client.setOption(StandardSocketOptions.SO_KEEPALIVE, true);
     }
     catch(ConnectException | UnresolvedAddressException e1)
     {
