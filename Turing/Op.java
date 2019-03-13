@@ -1,5 +1,3 @@
-package Turing;
-
 public enum Op
 {
   SuccessfullyRegistered,     // Registrazione avvenuta con successo

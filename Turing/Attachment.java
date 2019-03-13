@@ -1,5 +1,3 @@
-package Turing;
-
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 

@@ -12,6 +12,7 @@
       <excludeFolder url="file://$MODULE_DIR$/GestioneLaboratorio" />
       <excludeFolder url="file://$MODULE_DIR$/NonBlockingThreadSafeDeque" />
       <excludeFolder url="file://$MODULE_DIR$/SimpleDaemons" />
+      <excludeFolder url="file://$MODULE_DIR$/Turing" />
       <excludeFolder url="file://$MODULE_DIR$/UDPMulticast" />
       <excludeFolder url="file://$MODULE_DIR$/UDPPing" />
       <excludeFolder url="file://$MODULE_DIR$/UfficioPostale" />

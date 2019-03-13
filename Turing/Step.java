@@ -1,5 +1,3 @@
-package Turing;
-
 public enum Step
 {
   WaitingForMessageSize,     // Attesa ricezione dimensione del messaggio

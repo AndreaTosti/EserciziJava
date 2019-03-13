@@ -1,5 +1,3 @@
-package Turing;
-
 import java.util.concurrent.ConcurrentMap;
 
 public class RegUtenteImplementation implements RegUtenteInterface

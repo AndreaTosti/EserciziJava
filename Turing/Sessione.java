@@ -1,5 +1,3 @@
-package Turing;
-
 class Sessione
 {
   private Utente utente;

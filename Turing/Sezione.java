@@ -1,5 +1,3 @@
-package Turing;
-
 class Sezione
 {
   private Utente editingUser;

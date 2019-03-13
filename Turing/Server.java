@@ -1,5 +1,3 @@
-package Turing;
-
 import java.io.File;
 import java.io.IOException;
 import java.net.*;
@@ -500,9 +498,9 @@ public class Server
     catch(ExportException e1)
     {
       printErr(e1.toString());
-      printErr("Errore con la Bind, probabilmente la porta RMI è (ancora) in " +
+      printErr("Errore con la Bind, probabilmente la porta RMI e' (ancora) in " +
               " uso da un'altra applicazione");
-      printErr("è consigliato cambiare porta RMI: " +
+      printErr("e' consigliato cambiare porta RMI: " +
               "java Server [port_number] [RMI_port_number]");
       System.exit(1);
     }
@@ -528,9 +526,9 @@ public class Server
     catch(IOException e)
     {
       e.printStackTrace();
-      printErr("Errore con la Bind, probabilmente la porta è (ancora) in " +
+      printErr("Errore con la Bind, probabilmente la porta e' (ancora) in " +
               " uso da un'altra applicazione");
-      printErr("è consigliato cambiare porta: " +
+      printErr("e' consigliato cambiare porta: " +
               "java Server [port_number] [RMI_port_number]");
       System.exit(1);
     }
