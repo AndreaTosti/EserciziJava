@@ -921,6 +921,8 @@ public class Client
       {
         stdin = reader.readLine();
         String[] splitted = stdin.split("\\s+");
+        if(splitted == null)
+          continue;
 
         switch(splitted[0].toLowerCase())
         {
