@@ -488,11 +488,12 @@ public class Server
     //Registrazione RMI
     RegUtenteImplementation object = new RegUtenteImplementation(users);
     RegUtenteInterface stub = null;
+    Registry registry = null;
     try
     {
       System.setProperty("java.rmi.server.hostname", host);
       stub = (RegUtenteInterface) UnicastRemoteObject.exportObject(object, rmiPort);
-      Registry registry = LocateRegistry.createRegistry(rmiPort);
+      registry = LocateRegistry.createRegistry(rmiPort);
       registry.bind("RegUtente", stub);
     }
     catch(ExportException e1)
