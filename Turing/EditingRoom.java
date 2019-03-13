@@ -5,7 +5,6 @@ import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.util.LinkedList;
 import java.util.StringJoiner;
-import java.util.concurrent.LinkedBlockingQueue;
 
 class EditingRoom
 {

@@ -20,9 +20,9 @@ import java.util.concurrent.ConcurrentMap;
 
 public class Server
 {
-  private static String DEFAULT_HOST = "localhost"; //Host di Default
-  private static int DEFAULT_PORT = 51811; //Porta di Default
-  private static int DEFAULT_RMI_PORT = 51812; //Porta RMI
+  private static String DEFAULT_HOST = "localhost"; //Host di default
+  private static int DEFAULT_PORT = 51811; //Porta di default
+  private static int DEFAULT_RMI_PORT = 51812; //Porta RMI di default
   private static String DEFAULT_DELIMITER = "#";
   private static String DEFAULT_INTERIOR_DELIMITER = ":";
   private static String DEFAULT_PARENT_FOLDER = "518111_ServerDirs";
@@ -1609,15 +1609,8 @@ public class Server
             println("Lost connection from Client IP " + clientRemoteAddress);
           else
             Op.print(result);
+
           key.cancel();
-          try
-          {
-            key.channel().close();
-          }
-          catch(IOException ex)
-          {
-            ex.printStackTrace();
-          }
         }
       }
     }

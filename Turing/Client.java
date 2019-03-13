@@ -77,7 +77,6 @@ public class Client
     ByteBuffer buffer1 = ByteBuffer.wrap(operation);
     try
     {
-
       while(bufferDimensione.hasRemaining())
         client.write(bufferDimensione);
 
@@ -192,7 +191,7 @@ public class Client
     }
 
     println("commands:");
-    println("\tregister <username> <password> registra l'utenteca");
+    println("\tregister <username> <password> registra l'utente");
     println("\tlogin <username> <password>    effettua il login");
     println("\tlogout                         effettua il logout");
     println("\tcreate <doc> <numsezioni>      crea un documento");
@@ -467,7 +466,7 @@ public class Client
         long stato = bufferStato.getLong();
 
         ByteBuffer buffer = ByteBuffer.allocate(dimensioneFile);
-        //Per il testing in localhost, il nome della cartella conterrà anche
+        //Il nome della cartella conterrà anche
         //l'username per distinguerlo da altri client sullo stesso host
 
         //Si assume che il nomeSezione sia nomeDocumento_numSezione
@@ -1139,7 +1138,6 @@ public class Client
             printErr("Comando non riconosciuto");
             break;
         }
-
       }
       reader.close();
     }
